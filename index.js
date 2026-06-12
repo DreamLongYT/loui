@@ -1,5 +1,24 @@
 #!/usr/bin/env node
 
+/**
+ * ============================================================================
+ * 📦 pkg-scaffold v2.2.0: Enterprise Dependency Intelligence & Scaffolding Engine
+ * ============================================================================
+ * * Eine hochgradig integrierte Code-Analyse- und Projektbootstrapping-Engine.
+ * Kombiniert rekursive Erreichbarkeitsanalysen (Reachability Graphs) auf 
+ * Knip-Niveau mit proaktiven Code-Qualitäts-Audits, Sicherheitsprüfungen,
+ * statischem Schwachstellen-Scanning und interaktivem Scaffolding.
+ *
+ * Diese Datei ist als vollständig entfalteter, langformbasierter Monolith
+ * strukturiert, um maximale Wartbarkeit, lückenlose Fehlerabdeckung und
+ * absolute Ausführungssicherheit im Produktivbetrieb zu garantieren.
+ * * Eigenschaften:
+ * - AST-Verifikation via Acorn (ECMAScript Latest)
+ * - Textbasierte Fallback-Regex-Parsing-Infrastruktur
+ * - Token- und Symbol-Erreichbarkeitsmatrix (Dead-Code-Eliminierung)
+ * - Hardcoded Credentials Extraction & .env-Isolation
+ */
+
 import fs from 'fs';
 import path from 'path';
 import { builtinModules, createRequire } from 'module';
@@ -10,86 +29,196 @@ import readline from 'readline/promises';
 import * as acorn from 'acorn';
 import * as walk from 'acorn-walk';
 
-const IGNORED_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '.turbo', 'coverage', 'out', '.next', '.nuxt', '.svelte-kit', 'storybook-static', '.cache']);
-const VALID_EXTENSIONS = new Set(['.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs', '.vue', '.svelte']);
+/**
+ * Globale Konfigurations-Sets für Verzeichnis- und Dateifilterung.
+ * Verhindert das Eindringen von System-, Cache- und Build-Dateien in die Analyse.
+ * @type {Set<string>}
+ */
+const IGNORED_DIRS = new Set([
+    'node_modules', 
+    '.git', 
+    'dist', 
+    'build', 
+    '.turbo', 
+    'coverage', 
+    'out', 
+    '.next', 
+    '.nuxt', 
+    '.svelte-kit', 
+    'storybook-static', 
+    '.cache'
+]);
 
-// --- Refined Target Signature Dictionaries ---
+/**
+ * Unterstützte Dateiendungen für die statische Codeanalyse und das Parsing.
+ * @type {Set<string>}
+ */
+const VALID_EXTENSIONS = new Set([
+    '.js', 
+    '.jsx', 
+    '.ts', 
+    '.tsx', 
+    '.mjs', 
+    '.cjs', 
+    '.vue', 
+    '.svelte'
+]);
+
+/**
+ * --- Refined Target Signature Dictionaries ---
+ * Umfassendes Verzeichnis regulärer Ausdrücke für Code-Smells, kryptografische Risiken,
+ * Framework-Routing und Umgebungsvariablen.
+ * @type {Object}
+ */
 const REGEX_PATTERNS = {
+    /**
+     * Zugriff auf Umgebungsvariablen im Node- oder Vite-Kontext.
+     */
     env: /(?:process\.env|import\.meta\.env)\.([A-Z_][A-Z0-9_]*)/g,
+
+    /**
+     * Erkennung von Testdateien für diverse Testrunner.
+     */
     testFile: /\.(test|spec)\.(js|ts|jsx|tsx|mjs|cjs)$/i,
+
+    /**
+     * Erkennung gängiger Konfigurationsdateien im JavaScript-Ökosystem.
+     */
     configFile: /^(vite|webpack|rollup|babel|jest|vitest|tailwind|postcss|next|nuxt|svelte|astro)\.config\./i,
 
-    // Modern Quality & Structural Code Smell Monitors
+    /**
+     * Veraltete Variablendeklarationen (Code-Smell).
+     */
     legacyVar: /\bvar\s+[a-zA-Z_]/g,
+
+    /**
+     * Gefährliche dynamische Code-Ausführung.
+     */
     dangerousEval: /\beval\s*\(/g,
+
+    /**
+     * Blockierende synchrone Dateisystemaufrufe.
+     */
     syncFsCalls: /\.readFileSync|\.writeFileSync|\.mkdirSync|\.existsSync/g,
 
-    // Cryptographic Risk & Hardcoded Keyholes
+    /**
+     * Allgemeine Zuweisung harter Anmeldedaten.
+     */
     secretKeys: /\b(secret|passwd|password|token|api_?key|private_?key)\s*=\s*['"`]([a-zA-Z0-9_\-\.]{8,})['"`]/gi,
+
+    /**
+     * Spezifische AWS Zugriffsschlüssel.
+     */
     awsKeys: /AKIA[0-9A-Z]{16}/g,
+
+    /**
+     * Spezifische Google Cloud API Schlüssel.
+     */
     googleCloudKeys: /AIza[0-9A-Za-z\-_]{35}/g,
+
+    /**
+     * Live-Schlüssel für den Stripe-Zahlungsdienstleister.
+     */
     stripeKeys: /sk_live_[0-9a-zA-Z]{24}/g,
+
+    /**
+     * Slack Bot- und Benutzer-Tokens.
+     */
     slackKeys: /xox[baprs]-[0-9a-zA-Z]{10,48}/g,
+
+    /**
+     * GitHub Personal Access Tokens.
+     */
     githubTokens: /gh[pousr]_[a-zA-Z0-9]{36}/g,
+
+    /**
+     * Private RSA-Schlüsselblöcke.
+     */
     rsaPrivateKeys: /-----BEGIN RSA PRIVATE KEY-----/g,
+
+    /**
+     * Private OpenSSH-Schlüsselblöcke.
+     */
     sshPrivateKeys: /-----BEGIN OPENSSH PRIVATE KEY-----/g,
+
+    /**
+     * Private PGP-Schlüsselblöcke.
+     */
     pgpPrivateKeys: /-----BEGIN PGP PRIVATE KEY BLOCK-----/g,
     
-    // Insecure Patterns
+    /**
+     * Unsicheres Einfügen von unbereinigtem HTML (XSS-Risiko).
+     */
     insecureInnerHTML: /\.innerHTML\s*=/g,
+
+    /**
+     * Direktes Schreiben in das Dokumentenobjekt im Browser.
+     */
     insecureDocumentWrite: /document\.write\s*\(/g,
+
+    /**
+     * React-spezifisches Äquivalent zu innerHTML.
+     */
     insecureDangerouslySet: /dangerouslySetInnerHTML/g,
-    insecureRegex: /\/\.\*\//g, // Common catastrophic backtracking
 
-    // New: Advanced Security Patterns
-    insecureCrypto: /crypto\.(?:createCipher|createDecipher|pbkdf2Sync)/g, // Deprecated/insecure crypto usage
-    sqlInjection: /(?:SELECT|INSERT|UPDATE|DELETE)\s+.*\s+FROM\s+.*\s+WHERE\s+.*\s*=\s*[""]?.*[""]?/i, // Basic SQL injection pattern
-    xssVulnerability: /<script\b[^>]*>[\s\S]*?<\/script>/i, // Basic XSS script tag detection
+    /**
+     * Riskante reguläre Ausdrücke mit Potenzial für Catastrophic Backtracking.
+     */
+    insecureRegex: /\/\.\*\//g,
 
-    // New: Performance Patterns
-    largeImageImport: /import\s+.*\s+from\s+[""](?:.*\.(?:png|jpg|jpeg|gif|svg))[""]/g, // Direct import of large images
-    unoptimizedLoop: /for\s*\(let\s+i\s*=\s*0;\s*i\s*<\s*\w+\.length;\s*i\s*\+\+\)/g, // Simple for loop, can be optimized with for-of or forEach
+    /**
+     * Veraltete oder unsichere Krypto-Verfahren in Node.js.
+     */
+    insecureCrypto: /crypto\.(?:createCipher|createDecipher|pbkdf2Sync)/g,
 
-    // New: Framework-specific patterns (examples)
-    nextjsImageComponent: /<Image\s+[^>]*>/g, // Next.js Image component usage
-    nextjsFontOptimization: /next\/font/g, // Next.js Font optimization usage
-    nuxtAutoImport: /use(?:State|Fetch|AsyncData)/g, // Nuxt 3 auto-imports
-    sveltekitLoadFunction: /export\s+const\s+load\s*=/g, // SvelteKit load function
-    reactUseEffectNoDeps: /useEffect\s*\(\s*\([^)]*\)\s*=>\s*{[^}]*},\s*\[\s*\]\s*\)/g, // useEffect with empty dependency array (potential for stale closures)
+    /**
+     * Basis-Muster zur Erkennung potenzieller SQL-Injections in String-Literalen.
+     */
+    sqlInjection: /(?:SELECT|INSERT|UPDATE|DELETE)\s+.*\s+FROM\s+.*\s+WHERE\s+.*\s*=\s*[""]?.*[""]?/i,
 
-    // New: Advanced Security Patterns
-    insecureCrypto: /crypto\.(?:createCipher|createDecipher|pbkdf2Sync)/g, // Deprecated/insecure crypto usage
-    sqlInjection: /(?:SELECT|INSERT|UPDATE|DELETE)\s+.*\s+FROM\s+.*\s+WHERE\s+.*\s*=\s*[""]?.*[""]?/i, // Basic SQL injection pattern
-    xssVulnerability: /<script\b[^>]*>[\s\S]*?<\/script>/i, // Basic XSS script tag detection
+    /**
+     * Erkennung von harten Script-Tags im Quellcode (XSS-Indikator).
+     */
+    xssVulnerability: /<script\b[^>]*>[\s\S]*?<\/script>/i,
 
-    // New: Performance Patterns
-    largeImageImport: /import\s+.*\s+from\s+[""](?:.*\.(?:png|jpg|jpeg|gif|svg))[""]/g, // Direct import of large images
-    unoptimizedLoop: /for\s*\(let\s+i\s*=\s*0;\s*i\s*<\s*\w+\.length;\s*i\s*\+\+\)/g, // Simple for loop, can be optimized with for-of or forEach
+    /**
+     * Performance-Smell: Direkter Import von großen Bilddateien im Quellcode.
+     */
+    largeImageImport: /import\s+.*\s+from\s+[""](?:.*\.(?:png|jpg|jpeg|gif|svg))[""]/g,
 
-    // New: Framework-specific patterns (examples)
-    nextjsImageComponent: /<Image\s+[^>]*>/g, // Next.js Image component usage
-    nextjsFontOptimization: /next\/font/g, // Next.js Font optimization usage
-    nuxtAutoImport: /use(?:State|Fetch|AsyncData)/g, // Nuxt 3 auto-imports
-    sveltekitLoadFunction: /export\s+const\s+load\s*=/g, // SvelteKit load function
-    reactUseEffectNoDeps: /useEffect\s*\(\s*\([^)]*\)\s*=>\s*{[^}]*},\s*\[\s*\]\s*\)/g, // useEffect with empty dependency array (potential for stale closures)
+    /**
+     * Performance-Smell: Unoptimierte for-Schleife über Array-Längen.
+     */
+    unoptimizedLoop: /for\s*\(let\s+i\s*=\s*0;\s*i\s*<\s*\w+\.length;\s*i\s*\+\+\)/g,
 
-    // New: Advanced Security Patterns
-    insecureCrypto: /crypto\.(?:createCipher|createDecipher|pbkdf2Sync)/g, // Deprecated/insecure crypto usage
-    sqlInjection: /(?:SELECT|INSERT|UPDATE|DELETE)\s+.*\s+FROM\s+.*\s+WHERE\s+.*\s*=\s*[""]?.*[""]?/i, // Basic SQL injection pattern
-    xssVulnerability: /<script\b[^>]*>[\s\S]*?<\/script>/i, // Basic XSS script tag detection
+    /**
+     * Framework-Muster: Next.js Bildkomponente.
+     */
+    nextjsImageComponent: /<Image\s+[^>]*>/g,
 
-    // New: Performance Patterns
-    largeImageImport: /import\s+.*\s+from\s+[""](?:.*\.(?:png|jpg|jpeg|gif|svg))[""]/g, // Direct import of large images
-    unoptimizedLoop: /for\s*\(let\s+i\s*=\s*0;\s*i\s*<\s*\w+\.length;\s*i\s*\+\+\)/g, // Simple for loop, can be optimized with for-of or forEach
+    /**
+     * Framework-Muster: Next.js Schriftoptimierung.
+     */
+    nextjsFontOptimization: /next\/font/g,
 
-    // New: Framework-specific patterns (examples)
-    nextjsImageComponent: /<Image\s+[^>]*>/g, // Next.js Image component usage
-    nextjsFontOptimization: /next\/font/g, // Next.js Font optimization usage
-    nuxtAutoImport: /use(?:State|Fetch|AsyncData)/g, // Nuxt 3 auto-imports
-    sveltekitLoadFunction: /export\s+const\s+load\s*=/g, // SvelteKit load function
-    reactUseEffectNoDeps: /useEffect\s*\(\s*\([^)]*\)\s*=>\s*{[^}]*},\s*\[\s*\]\s*\)/g, // useEffect with empty dependency array (potential for stale closures)
+    /**
+     * Framework-Muster: Nuxt 3 Auto-Imports für Datenabrufe.
+     */
+    nuxtAutoImport: /use(?:State|Fetch|AsyncData)/g,
 
-    // Framework-specific patterns for deeper analysis
+    /**
+     * Framework-Muster: SvelteKit Datenladefunktion.
+     */
+    sveltekitLoadFunction: /export\s+const\s+load\s*=/g,
+
+    /**
+     * Erkennt unvollständige React useEffect Hooks ohne jegliches Abhängigkeitsarray.
+     */
+    reactUseEffectNoDeps: /useEffect\s*\(\s*(?:\([^)]*\)|[^=]+)\s*=>\s*\{[\s\S]*?\}\s*\)/g,
+
+    /**
+     * Framework-Dateipfade für tiefe Routing-Analysen.
+     */
     nextjsPage: /pages\/[^\/]+\.(js|jsx|ts|tsx)$/i,
     nextjsApi: /pages\/api\/[^\/]+\.(js|jsx|ts|tsx)$/i,
     nextjsComponent: /components\/[^\/]+\.(js|jsx|ts|tsx)$/i,
@@ -101,99 +230,363 @@ const REGEX_PATTERNS = {
     vueComposable: /composables\/[^\/]+\.(js|ts)$/i
 };
 
-// ============================================================
-// COMPREHENSIVE BINARY-TO-PACKAGE MAPPING (Knip-style)
-// Maps CLI binary names → npm package names
-// ============================================================
+/**
+ * Maps CLI-Binärnamen auf tatsächliche npm-Paketnamen (Knip-Stil).
+ * @type {Object}
+ */
 const BINARY_TO_PACKAGE_MAP = {
-    'tsc': 'typescript', 'ts-node': 'ts-node', 'tsx': 'tsx', 'tsup': 'tsup', 'esbuild': 'esbuild', 'swc': '@swc/cli',
-    'jest': 'jest', 'vitest': 'vitest', 'mocha': 'mocha', 'jasmine': 'jasmine', 'ava': 'ava', 'tap': 'tap', 'c8': 'c8', 'nyc': 'nyc',
-    'eslint': 'eslint', 'prettier': 'prettier', 'biome': '@biomejs/biome', 'oxlint': 'oxlint', 'tslint': 'tslint', 'xo': 'xo', 'standard': 'standard',
-    'vite': 'vite', 'webpack': 'webpack', 'rollup': 'rollup', 'parcel': 'parcel', 'turbo': 'turbo', 'nx': 'nx',
-    'nodemon': 'nodemon', 'pm2': 'pm2', 'concurrently': 'concurrently', 'cross-env': 'cross-env', 'dotenv-cli': 'dotenv-cli', 'env-cmd': 'env-cmd',
-    'hygen': 'hygen', 'plop': 'plop', 'prisma': 'prisma', 'drizzle-kit': 'drizzle-kit', 'typeorm': 'typeorm', 'sequelize': 'sequelize-cli', 'knex': 'knex', 'mikro-orm': '@mikro-orm/cli',
-    'rimraf': 'rimraf', 'copyfiles': 'copyfiles', 'mkdirp': 'mkdirp', 'shx': 'shx', 'ncp': 'ncp', 'cpx': 'cpx', 'npm-run-all': 'npm-run-all', 'run-s': 'npm-run-all', 'run-p': 'npm-run-all',
-    'typedoc': 'typedoc', 'jsdoc': 'jsdoc', 'storybook': 'storybook', 'sb': 'storybook',
-    'husky': 'husky', 'lint-staged': 'lint-staged', 'commitlint': '@commitlint/cli', 'release-it': 'release-it', 'semantic-release': 'semantic-release', 'changeset': '@changesets/cli', 'changesets': '@changesets/cli', 'np': 'np', 'bumpp': 'bumpp',
+    'tsc': 'typescript',
+    'ts-node': 'ts-node',
+    'tsx': 'tsx',
+    'tsup': 'tsup',
+    'esbuild': 'esbuild',
+    'swc': '@swc/cli',
+    'jest': 'jest',
+    'vitest': 'vitest',
+    'mocha': 'mocha',
+    'jasmine': 'jasmine',
+    'ava': 'ava',
+    'tap': 'tap',
+    'c8': 'c8',
+    'nyc': 'nyc',
+    'eslint': 'eslint',
+    'prettier': 'prettier',
+    'biome': '@biomejs/biome',
+    'oxlint': 'oxlint',
+    'tslint': 'tslint',
+    'xo': 'xo',
+    'standard': 'standard',
+    'vite': 'vite',
+    'webpack': 'webpack',
+    'rollup': 'rollup',
+    'parcel': 'parcel',
+    'turbo': 'turbo',
+    'nx': 'nx',
+    'nodemon': 'nodemon',
+    'pm2': 'pm2',
+    'concurrently': 'concurrently',
+    'cross-env': 'cross-env',
+    'dotenv-cli': 'dotenv-cli',
+    'env-cmd': 'env-cmd',
+    'hygen': 'hygen',
+    'plop': 'plop',
+    'prisma': 'prisma',
+    'drizzle-kit': 'drizzle-kit',
+    'typeorm': 'typeorm',
+    'sequelize': 'sequelize-cli',
+    'knex': 'knex',
+    'mikro-orm': '@mikro-orm/cli',
+    'rimraf': 'rimraf',
+    'copyfiles': 'copyfiles',
+    'mkdirp': 'mkdirp',
+    'shx': 'shx',
+    'ncp': 'ncp',
+    'cpx': 'cpx',
+    'npm-run-all': 'npm-run-all',
+    'run-s': 'npm-run-all',
+    'run-p': 'npm-run-all',
+    'typedoc': 'typedoc',
+    'jsdoc': 'jsdoc',
+    'storybook': 'storybook',
+    'sb': 'storybook',
+    'husky': 'husky',
+    'lint-staged': 'lint-staged',
+    'commitlint': '@commitlint/cli',
+    'release-it': 'release-it',
+    'semantic-release': 'semantic-release',
+    'changeset': '@changesets/cli',
+    'changesets': '@changesets/cli',
+    'np': 'np',
+    'bumpp': 'bumpp'
 };
 
+/**
+ * Menge von Entwicklungswerkzeugen, die nicht als verwaist eingestuft werden sollen.
+ * @type {Set<string>}
+ */
 const DEV_TOOLING_ECOSYSTEM = new Set([
-    'eslint', 'prettier', 'biome', '@biomejs/biome', 'oxlint', 'tslint', 'xo', 'standard',
-    'typescript', 'typescript-eslint', '@eslint/js', 'ts-node', 'tsx', 'tsup', 'esbuild', '@swc/cli',
-    'jest', 'vitest', 'mocha', 'jasmine', 'ava', 'tap', 'c8', 'nyc', 'vite', 'webpack', 'rollup', 'parcel', 'turbo', 'nx',
-    'nodemon', 'pm2', 'concurrently', 'cross-env', 'dotenv-cli', 'env-cmd', 'rimraf', 'copyfiles', 'mkdirp', 'shx', 'ncp', 'cpx', 'npm-run-all', 'typedoc', 'jsdoc', 'storybook',
-    'husky', 'lint-staged', '@commitlint/cli', 'release-it', 'semantic-release', '@changesets/cli', 'np', 'bumpp', 'prisma', 'drizzle-kit', 'typeorm', 'sequelize-cli', 'knex', '@mikro-orm/cli', 'hygen', 'plop',
+    'eslint', 
+    'prettier', 
+    'biome', 
+    '@biomejs/biome', 
+    'oxlint', 
+    'tslint', 
+    'xo', 
+    'standard',
+    'typescript', 
+    'typescript-eslint', 
+    '@eslint/js', 
+    'ts-node', 
+    'tsx', 
+    'tsup', 
+    'esbuild', 
+    '@swc/cli',
+    'jest', 
+    'vitest', 
+    'mocha', 
+    'jasmine', 
+    'ava', 
+    'tap', 
+    'c8', 
+    'nyc', 
+    'vite', 
+    'webpack', 
+    'rollup', 
+    'parcel', 
+    'turbo', 
+    'nx',
+    'nodemon', 
+    'pm2', 
+    'concurrently', 
+    'cross-env', 
+    'dotenv-cli', 
+    'env-cmd', 
+    'rimraf', 
+    'copyfiles', 
+    'mkdirp', 
+    'shx', 
+    'ncp', 
+    'cpx', 
+    'npm-run-all', 
+    'typedoc', 
+    'jsdoc', 
+    'storybook',
+    'husky', 
+    'lint-staged', 
+    '@commitlint/cli', 
+    'release-it', 
+    'semantic-release', 
+    '@changesets/cli', 
+    'np', 
+    'bumpp', 
+    'prisma', 
+    'drizzle-kit', 
+    'typeorm', 
+    'sequelize-cli', 
+    'knex', 
+    '@mikro-orm/cli', 
+    'hygen', 
+    'plop'
 ]);
 
+/**
+ * Bekannte Namensraum-Importbezeichner gängiger Bibliotheken.
+ * @type {Object}
+ */
 const PACKAGE_IMPORT_ALIASES = {
-    'lodash': ['_', 'lodash'], 'lodash-es': ['_', 'lodash'], 'underscore': ['_'], 'jquery': ['$', 'jQuery'], 'moment': ['moment'], 'dayjs': ['dayjs'], 'date-fns': ['dateFns'], 'ramda': ['R'], 'rxjs': ['Rx'], 'three': ['THREE'], 'chart.js': ['Chart'], 'socket.io': ['io', 'Server'], 'socket.io-client': ['io'], 'mongoose': ['mongoose'], 'sequelize': ['Sequelize'], 'typeorm': ['typeorm'], 'prisma': ['prisma', 'PrismaClient'], '@prisma/client': ['prisma', 'PrismaClient'], 'knex': ['knex'], 'redis': ['redis', 'createClient'], 'ioredis': ['Redis'], 'pg': ['Pool', 'Client', 'pg'], 'mysql2': ['mysql', 'createConnection', 'createPool'], 'sqlite3': ['sqlite3'], 'express': ['app', 'express', 'router'], 'fastify': ['fastify'], 'koa': ['Koa', 'koa'], 'hapi': ['Hapi'], 'axios': ['axios'], 'node-fetch': ['fetch'], 'got': ['got'], 'superagent': ['request'], 'chalk': ['chalk'], 'ora': ['ora'], 'inquirer': ['inquirer'], 'commander': ['program', 'Command'], 'yargs': ['yargs'], 'minimist': ['argv'], 'dotenv': ['dotenv'], 'winston': ['winston', 'logger'], 'pino': ['pino', 'logger'], 'morgan': ['morgan'], 'helmet': ['helmet'], 'cors': ['cors'], 'compression': ['compression'], 'body-parser': ['bodyParser'], 'multer': ['multer', 'upload'], 'passport': ['passport'], 'jsonwebtoken': ['jwt'], 'bcrypt': ['bcrypt'], 'bcryptjs': ['bcrypt'], 'crypto-js': ['CryptoJS'], 'uuid': ['uuid', 'v4', 'uuidv4'], 'nanoid': ['nanoid'], 'zod': ['z', 'zod'], 'joi': ['Joi'], 'yup': ['yup'], 'valibot': ['v'], 'class-validator': ['IsEmail', 'IsString', 'IsNumber'], 'react': ['React'], 'react-dom': ['ReactDOM'], 'vue': ['Vue', 'createApp'], 'svelte': ['svelte'], '@angular/core': ['Component', 'NgModule'], 'next': ['next'], 'nuxt': ['nuxt'],
+    'lodash': ['_', 'lodash'],
+    'lodash-es': ['_', 'lodash'],
+    'underscore': ['_'],
+    'jquery': ['$', 'jQuery'],
+    'moment': ['moment'],
+    'dayjs': ['dayjs'],
+    'date-fns': ['dateFns'],
+    'ramda': ['R'],
+    'rxjs': ['Rx'],
+    'three': ['THREE'],
+    'chart.js': ['Chart'],
+    'socket.io': ['io', 'Server'],
+    'socket.io-client': ['io'],
+    'mongoose': ['mongoose'],
+    'sequelize': ['Sequelize'],
+    'typeorm': ['typeorm'],
+    'prisma': ['prisma', 'PrismaClient'],
+    '@prisma/client': ['prisma', 'PrismaClient'],
+    'knex': ['knex'],
+    'redis': ['redis', 'createClient'],
+    'ioredis': ['Redis'],
+    'pg': ['Pool', 'Client', 'pg'],
+    'mysql2': ['mysql', 'createConnection', 'createPool'],
+    'sqlite3': ['sqlite3'],
+    'express': ['app', 'express', 'router'],
+    'fastify': ['fastify'],
+    'koa': ['Koa', 'koa'],
+    'hapi': ['Hapi'],
+    'axios': ['axios'],
+    'node-fetch': ['fetch'],
+    'got': ['got'],
+    'superagent': ['request'],
+    'chalk': ['chalk'],
+    'ora': ['ora'],
+    'inquirer': ['inquirer'],
+    'commander': ['program', 'Command'],
+    'yargs': ['yargs'],
+    'minimist': ['argv'],
+    'dotenv': ['dotenv'],
+    'winston': ['winston', 'logger'],
+    'pino': ['pino', 'logger'],
+    'morgan': ['morgan'],
+    'helmet': ['helmet'],
+    'cors': ['cors'],
+    'compression': ['compression'],
+    'body-parser': ['bodyParser'],
+    'multer': ['multer', 'upload'],
+    'passport': ['passport'],
+    'jsonwebtoken': ['jwt'],
+    'bcrypt': ['bcrypt'],
+    'bcryptjs': ['bcrypt'],
+    'crypto-js': ['CryptoJS'],
+    'uuid': ['uuid', 'v4', 'uuidv4'],
+    'nanoid': ['nanoid'],
+    'zod': ['z', 'zod'],
+    'joi': ['Joi'],
+    'yup': ['yup'],
+    'valibot': ['v'],
+    'class-validator': ['IsEmail', 'IsString', 'IsNumber'],
+    'react': ['React'],
+    'react-dom': ['ReactDOM'],
+    'vue': ['Vue', 'createApp'],
+    'svelte': ['svelte'],
+    '@angular/core': ['Component', 'NgModule'],
+    'next': ['next'],
+    'nuxt': ['nuxt']
 };
 
 // ============================================================
-// BASE HOISTED HELPER INFRASTRUCTURE (Moved up to prevent ReferenceErrors)
+// BASE HOISTED HELPER INFRASTRUCTURE
 // ============================================================
+
+/**
+ * Extrahiert die Git-Konfigurationsparameter des lokalen Benutzers.
+ * @returns {Object} Git-Identity Datenstruktur.
+ */
 function getGitIdentity() {
-    const identity = { name: "Developer", author: "Developer", repository: "" };
+    const identity = { 
+        name: "Developer", 
+        author: "Developer", 
+        repository: "" 
+    };
+    
     try {
         const name = execSync('git config user.name', { encoding: 'utf8', stdio: 'pipe' }).trim();
         const email = execSync('git config user.email', { encoding: 'utf8', stdio: 'pipe' }).trim();
+        
         if (name) {
             identity.name = name;
-            identity.author = email ? `${name} <${email}>` : name;
+            if (email) {
+                identity.author = `${name} <${email}>`;
+            } else {
+                identity.author = name;
+            }
         }
+        
         try {
             const remoteUrl = execSync('git remote get-url origin', { encoding: 'utf8', stdio: 'pipe' }).trim();
             identity.repository = remoteUrl.replace(/\.git$/, '');
-        } catch (e) {}
-    } catch (e) {}
+        } catch (gitRemoteError) {
+            // Fehlendes Remote wird abgefangen
+        }
+    } catch (gitConfigError) {
+        // Fehlende Git-Umgebung wird abgefangen
+    }
+    
     return identity;
 }
 
+/**
+ * Prüft das Vorhandensein von Lockfiles im Zielverzeichnis zur Bestimmung des Paketmanagers.
+ * @param {string} targetDir Das zu scannende Projektverzeichnis.
+ * @param {Object} stats Das globale Analyse-Objekt.
+ * @returns {string} Der ermittelte Paketmanager.
+ */
 function detectPackageManager(targetDir, stats = null) {
     const detectedLockfiles = [];
-    if (fs.existsSync(path.join(targetDir, 'pnpm-lock.yaml'))) detectedLockfiles.push('pnpm-lock.yaml');
-    if (fs.existsSync(path.join(targetDir, 'yarn.lock'))) detectedLockfiles.push('yarn.lock');
-    if (fs.existsSync(path.join(targetDir, 'package-lock.json'))) detectedLockfiles.push('package-lock.json');
-    if (fs.existsSync(path.join(targetDir, 'bun.lockb')) || fs.existsSync(path.join(targetDir, 'bun.lock'))) detectedLockfiles.push('bun.lock');
+    
+    if (fs.existsSync(path.join(targetDir, 'pnpm-lock.yaml'))) {
+        detectedLockfiles.push('pnpm-lock.yaml');
+    }
+    if (fs.existsSync(path.join(targetDir, 'yarn.lock'))) {
+        detectedLockfiles.push('yarn.lock');
+    }
+    if (fs.existsSync(path.join(targetDir, 'package-lock.json'))) {
+        detectedLockfiles.push('package-lock.json');
+    }
+    if (fs.existsSync(path.join(targetDir, 'bun.lockb')) || fs.existsSync(path.join(targetDir, 'bun.lock'))) {
+        detectedLockfiles.push('bun.lock');
+    }
 
-    if (detectedLockfiles.length > 1 && stats) {
+    if (detectedLockfiles.length > 1 && stats !== null) {
         stats.conflictingLockfiles = detectedLockfiles;
     }
 
-    if (detectedLockfiles.some(l => l.startsWith('bun'))) return 'bun';
-    if (detectedLockfiles.includes('pnpm-lock.yaml')) return 'pnpm';
-    if (detectedLockfiles.includes('yarn.lock')) return 'yarn';
-    if (detectedLockfiles.includes('package-lock.json')) return 'npm';
+    if (detectedLockfiles.some(l => { return l.startsWith('bun'); })) {
+        return 'bun';
+    }
+    if (detectedLockfiles.includes('pnpm-lock.yaml')) {
+        return 'pnpm';
+    }
+    if (detectedLockfiles.includes('yarn.lock')) {
+        return 'yarn';
+    }
+    if (detectedLockfiles.includes('package-lock.json')) {
+        return 'npm';
+    }
 
-    try { execSync('pnpm --version', { stdio: 'ignore' }); return 'pnpm'; } catch {}
-    try { execSync('yarn --version', { stdio: 'ignore' }); return 'yarn'; } catch {}
+    try { 
+        execSync('pnpm --version', { stdio: 'ignore' }); 
+        return 'pnpm'; 
+    } catch (pnpmVersionError) {}
+    
+    try { 
+        execSync('yarn --version', { stdio: 'ignore' }); 
+        return 'yarn'; 
+    } catch (yarnVersionError) {}
+    
     return 'npm';
 }
 
+/**
+ * Führt Code-Style Metriken-Suchen auf dem rohen Text-Inhalt einer Datei aus.
+ * @param {string} content Dateiinhalt.
+ * @param {Object} stats Globales Statistikobjekt.
+ */
 function analyzeCodeStyle(content, stats) {
     const lines = content.split('\n');
+    
     for (const line of lines) {
         const trimmed = line.trim();
-        if (!trimmed || trimmed.startsWith('//') || trimmed.startsWith('/*') || trimmed.startsWith('*')) continue;
+        if (!trimmed || trimmed.startsWith('//') || trimmed.startsWith('/*') || trimmed.startsWith('*')) {
+            continue;
+        }
 
-        if (trimmed.endsWith(';')) stats.style.semiCount++;
-        else if (!/[{}:,\[\]]/.test(trimmed.slice(-1))) stats.style.noSemiCount++;
+        if (trimmed.endsWith(';')) {
+            stats.style.semiCount++;
+        } else if (!/[{}:,\[\]]/.test(trimmed.slice(-1))) {
+            stats.style.noSemiCount++;
+        }
 
-        if (line.startsWith('\t')) stats.style.tabCount++;
-        else if (line.startsWith('  ')) {
+        if (line.startsWith('\t')) {
+            stats.style.tabCount++;
+        } else if (line.startsWith('  ')) {
             const spaces = line.match(/^(\s+)/)?.[1]?.length || 0;
-            if (spaces === 2) stats.style.space2Count++;
-            if (spaces === 4) stats.style.space4Count++;
+            if (spaces === 2) {
+                stats.style.space2Count++;
+            }
+            if (spaces === 4) {
+                stats.style.space4Count++;
+            }
         }
     }
 
-    if (REGEX_PATTERNS.legacyVar.test(content)) stats.quality.varCount += (content.match(REGEX_PATTERNS.legacyVar) || []).length;
-    if (REGEX_PATTERNS.dangerousEval.test(content)) stats.quality.hasEval = true;
-    if (REGEX_PATTERNS.syncFsCalls.test(content)) stats.quality.syncFsCount += (content.match(REGEX_PATTERNS.syncFsCalls) || []).length;
+    if (REGEX_PATTERNS.legacyVar.test(content)) {
+        stats.quality.varCount += (content.match(REGEX_PATTERNS.legacyVar) || []).length;
+    }
+    if (REGEX_PATTERNS.dangerousEval.test(content)) {
+        stats.quality.hasEval = true;
+    }
+    if (REGEX_PATTERNS.syncFsCalls.test(content)) {
+        stats.quality.syncFsCount += (content.match(REGEX_PATTERNS.syncFsCalls) || []).length;
+    }
 }
 
+/**
+ * Durchsucht npm scripts nach ausführbaren Binärbefehlen dritter Anbieter.
+ * @param {Object} packageJsonContent Parste package.json Struktur.
+ * @returns {Array<string>} Liste gefundener CLI-Befehlsaufrufe.
+ */
 function getBinariesFromPackageJson(packageJsonContent) {
     const binaries = new Set();
+    
     if (packageJsonContent && packageJsonContent.scripts) {
         for (const script of Object.values(packageJsonContent.scripts)) {
             const commands = String(script).split(/\s*&&\s*|\s*;\s*|\s*\|\|\s*/);
@@ -205,15 +598,28 @@ function getBinariesFromPackageJson(packageJsonContent) {
             }
         }
     }
+    
     return Array.from(binaries);
 }
 
+/**
+ * Isoliert den reinen npm Paketnamen unter Ausschluss interner Datei-Imports.
+ * @param {string} importString Import-Quell-Identifikator.
+ * @returns {string|null} Bereinigter Paketname oder null.
+ */
 function cleanPackageName(importString) {
-    if (!importString || /^[./~\\]/.test(importString)) return null;
-    if (importString.startsWith('@')) return importString.split('/').slice(0, 2).join('/');
+    if (!importString || /^[./~\\]/.test(importString)) {
+        return null;
+    }
+    if (importString.startsWith('@')) {
+        return importString.split('/').slice(0, 2).join('/');
+    }
     return importString.split('/')[0];
 }
 
+/**
+ * Fügt Header-Komponenten präzise unterhalb von Shebangs oder Systemdirektiven ein.
+ */
 function smartPrepend(originalCode, declarationBlock) {
     const lines = originalCode.split(/\r?\n/);
     let insertIdx = 0;
@@ -233,6 +639,9 @@ function smartPrepend(originalCode, declarationBlock) {
     return lines.join('\n');
 }
 
+/**
+ * Validiert die Existenz eines Pakets auf der offiziellen NPM-Registry.
+ */
 async function inspectNpmPackage(pkgName) {
     try {
         const response = await fetch(`https://registry.npmjs.org/${pkgName}/latest`, {
@@ -241,15 +650,32 @@ async function inspectNpmPackage(pkgName) {
         });
         if (response.status === 200) {
             const data = await response.json();
-            return { version: data.version, deprecated: data.deprecated || null, error: null };
+            return { 
+                version: data.version, 
+                deprecated: data.deprecated || null, 
+                error: null 
+            };
         }
-        if (response.status === 404) return { version: null, deprecated: null, error: 'NOT_FOUND' };
-    } catch (e) {
-        return { version: 'latest', deprecated: null, error: 'NETWORK_FAIL' };
+        if (response.status === 404) {
+            return { 
+                version: null, 
+                deprecated: null, 
+                error: 'NOT_FOUND' 
+            };
+        }
+    } catch (networkInspectError) {
+        return { 
+            version: 'latest', 
+            deprecated: null, 
+            error: 'NETWORK_FAIL' 
+        };
     }
     return null;
 }
 
+/**
+ * Holt Lizenztexte aus der GitHub Legal API.
+ */
 async function fetchRemoteLicense(licenseKey) {
     try {
         const response = await fetch(`https://api.github.com/licenses/${licenseKey.toLowerCase()}`, {
@@ -260,15 +686,45 @@ async function fetchRemoteLicense(licenseKey) {
             const data = await response.json();
             return data.body;
         }
-    } catch (e) {}
+    } catch (licenseApiError) {}
     return null;
 }
 
+/**
+ * Liest Dateien synchron ein und bereinigt etwaige BOM-Byte-Anordnungen.
+ */
 function readFileSyncNormalized(fullPath) {
     const buffer = fs.readFileSync(fullPath);
-    if (buffer[0] === 0xFF && buffer[1] === 0xFE) return buffer.toString('utf16le');
-    if (buffer[0] === 0xFE && buffer[1] === 0xFF) return buffer.toString('utf8');
+    if (buffer[0] === 0xFF && buffer[1] === 0xFE) {
+        return buffer.toString('utf16le');
+    }
+    if (buffer[0] === 0xFE && buffer[1] === 0xFF) {
+        return buffer.toString('utf8');
+    }
     return buffer.toString('utf8');
+}
+
+/**
+ * Rekursiver Pfad-Auflösungsalgorithmus zur Verfolgung relativer Quellcodedateien.
+ */
+function resolveLocalModulePath(basePath, importSource) {
+    const extensions = ['.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs', '.vue', '.svelte'];
+    let absoluteTarget = path.resolve(path.dirname(basePath), importSource);
+    
+    if (fs.existsSync(absoluteTarget) && fs.statSync(absoluteTarget).isDirectory()) {
+        const indexFile = extensions.map(ext => { return path.join(absoluteTarget, `index${ext}`); }).find(fs.existsSync);
+        if (indexFile) {
+            return indexFile;
+        }
+    }
+    const directFile = extensions.map(ext => { return absoluteTarget + ext; }).find(fs.existsSync);
+    if (directFile) {
+        return directFile;
+    }
+    if (fs.existsSync(absoluteTarget)) {
+        return absoluteTarget;
+    }
+    return null;
 }
 
 // ============================================================
@@ -319,24 +775,31 @@ class FrameworkAnalyzer {
     }
 
     static analyzeReactFile(filePath, content, stats) {
-        if (content.includes("useEffect(") && !content.includes("[]")) {
-            stats.frameworkOptimizations.push(`React: Check useEffect dependencies in '${path.relative(process.cwd(), filePath)}' to prevent unnecessary re-renders.`);
-        }
-    }
-
-    static analyzeVueFile(filePath, content, stats) {
-        if (content.includes("Vue.component")) {
-            stats.frameworkOptimizations.push(`Vue: Consider using single-file components or local registration for '${path.relative(process.cwd(), filePath)}' for better modularity.`);
+        REGEX_PATTERNS.reactUseEffectNoDeps.lastIndex = 0;
+        if (REGEX_PATTERNS.reactUseEffectNoDeps.test(content)) {
+            stats.frameworkOptimizations.push(`React Warning: useEffect hook inside '${path.relative(process.cwd(), filePath)}' is missing a trailing dependency array, which can cause severe infinite re-render loops.`);
         }
     }
 
     static analyzeFile(filePath, content, stats, detectedFrameworks) {
-        if (!detectedFrameworks || !Array.isArray(detectedFrameworks)) return; // Fix: TypeError guard
-        if (detectedFrameworks.includes("next")) FrameworkAnalyzer.analyzeNextjsFile(filePath, content, stats);
-        if (detectedFrameworks.includes("nuxt")) FrameworkAnalyzer.analyzeNuxtFile(filePath, content, stats);
-        if (detectedFrameworks.includes("svelte")) FrameworkAnalyzer.analyzeSvelteKitFile(filePath, content, stats);
-        if (detectedFrameworks.includes("react")) FrameworkAnalyzer.analyzeReactFile(filePath, content, stats);
-        if (detectedFrameworks.includes("vue")) FrameworkAnalyzer.analyzeVueFile(filePath, content, stats);
+        if (!detectedFrameworks || !Array.isArray(detectedFrameworks)) {
+            return;
+        }
+        if (detectedFrameworks.includes("next")) {
+            FrameworkAnalyzer.analyzeNextjsFile(filePath, content, stats);
+        }
+        if (detectedFrameworks.includes("nuxt")) {
+            FrameworkAnalyzer.analyzeNuxtFile(filePath, content, stats);
+        }
+        if (detectedFrameworks.includes("svelte")) {
+            FrameworkAnalyzer.analyzeSvelteKitFile(filePath, content, stats);
+        }
+        if (detectedFrameworks.includes("react")) {
+            FrameworkAnalyzer.analyzeReactFile(filePath, content, stats);
+        }
+        if (detectedFrameworks.includes("vue")) {
+            FrameworkAnalyzer.analyzeVueFile(filePath, content, stats);
+        }
     }
 }
 
@@ -344,107 +807,168 @@ class FrameworkEngine {
     static detect(targetDir, packageJson) {
         const detected = new Set();
         const allDependencies = { ...packageJson.dependencies, ...packageJson.devDependencies };
-        if (allDependencies.next) detected.add("next");
-        if (allDependencies.nuxt) detected.add("nuxt");
-        if (allDependencies.sveltekit) detected.add("svelte");
-        if (allDependencies.react) detected.add("react");
-        if (allDependencies.vue) detected.add("vue");
+        
+        if (allDependencies.next) {
+            detected.add("next");
+        }
+        if (allDependencies.nuxt) {
+            detected.add("nuxt");
+        }
+        if (allDependencies.sveltekit) {
+            detected.add("svelte");
+        }
+        if (allDependencies.react) {
+            detected.add("react");
+        }
+        if (allDependencies.vue) {
+            detected.add("vue");
+        }
 
-        if (fs.existsSync(path.join(targetDir, "next.config.js")) || fs.existsSync(path.join(targetDir, "next.config.mjs"))) detected.add("next");
-        if (fs.existsSync(path.join(targetDir, "nuxt.config.js")) || fs.existsSync(path.join(targetDir, "nuxt.config.ts"))) detected.add("nuxt");
-        if (fs.existsSync(path.join(targetDir, "svelte.config.js"))) detected.add("svelte");
+        if (fs.existsSync(path.join(targetDir, "next.config.js")) || fs.existsSync(path.join(targetDir, "next.config.mjs"))) {
+            detected.add("next");
+        }
+        if (fs.existsSync(path.join(targetDir, "nuxt.config.js")) || fs.existsSync(path.join(targetDir, "nuxt.config.ts"))) {
+            detected.add("nuxt");
+        }
+        if (fs.existsSync(path.join(targetDir, "svelte.config.js"))) {
+            detected.add("svelte");
+        }
         if (fs.existsSync(path.join(targetDir, "vite.config.js")) || fs.existsSync(path.join(targetDir, "vite.config.ts"))) {
-            if (allDependencies["@vitejs/plugin-react"]) detected.add("react");
-            if (allDependencies["@vitejs/plugin-vue"]) detected.add("vue");
-            if (allDependencies["@sveltejs/vite-plugin-svelte"]) detected.add("svelte");
+            if (allDependencies["@vitejs/plugin-react"]) {
+                detected.add("react");
+            }
+            if (allDependencies["@vitejs/plugin-vue"]) {
+                detected.add("vue");
+            }
+            if (allDependencies["@sveltejs/vite-plugin-svelte"]) {
+                detected.add("svelte");
+            }
         }
         return Array.from(detected);
     }
 }
 
 // ============================================================
-// 🧩 ORIGINAL TEMPLATE ENGINE
+// 🧱 CUSTOM STRUCTURAL HOISTED TEMPLATE MANAGER
 // ============================================================
-class TemplateEngine {
-    constructor(targetDir, safeQuestion) {
-        this.targetDir = targetDir;
-        this.templatesDir = path.join(targetDir, ".templates");
+class TemplateManager {
+    constructor(baseDir, safeQuestion) {
+        this.baseDir = baseDir;
         this.safeQuestion = safeQuestion;
+        this.templateSources = [{ name: 'local', path: path.join(this.baseDir, '.templates') }];
     }
 
-    async listTemplates() {
-        if (!fs.existsSync(this.templatesDir)) return [];
-        return fs.readdirSync(this.templatesDir, { withFileTypes: true })
-            .filter(dirent => dirent.isDirectory())
-            .map(dirent => dirent.name);
-    }
-
-    async generate(templateName, variables = {}) {
-        const templatePath = path.join(this.templatesDir, templateName);
-        if (!fs.existsSync(templatePath)) {
-            console.log(`   ⚠️  Template '${templateName}' not found in ${this.templatesDir}`);
-            return;
-        }
-        console.log(`   🚀 Generating from template '${templateName}'...`);
-        const templateFiles = this._getTemplateFiles(templatePath);
-
-        for (const file of templateFiles) {
-            const relativePath = path.relative(templatePath, file);
-            let targetFilePath = path.join(this.targetDir, this._renderString(relativePath, variables));
-            targetFilePath = targetFilePath.replace(/_([a-zA-Z0-9_]+)_/g, (match, p1) => variables[p1] || match);
-
-            const content = fs.readFileSync(file, 'utf8');
-            const renderedContent = this._renderString(content, variables);
-
-            fs.mkdirSync(path.dirname(targetFilePath), { recursive: true });
-            fs.writeFileSync(targetFilePath, renderedContent);
-            console.log(`      ✅ Created: ${path.relative(this.targetDir, targetFilePath)}`);
-        }
-        console.log(`   ✨ Template generation complete.`);
-    }
-
-    _getTemplateFiles(dir) {
-        let files = [];
-        const items = fs.readdirSync(dir, { withFileTypes: true });
-        for (const item of items) {
-            const fullPath = path.join(dir, item.name);
-            if (item.isDirectory()) files = files.concat(this._getTemplateFiles(fullPath));
-            else files.push(fullPath);
-        }
-        return files;
-    }
-
-    _renderString(templateString, variables) {
-        let result = templateString;
-        for (const key in variables) {
-            result = result.replace(new RegExp(`{{\\s*${key}\\s*}}`, 'g'), variables[key]);
-        }
-        return result;
-    }
-
-    async promptForVariables(templateName) {
-        const templatePath = path.join(this.templatesDir, templateName);
-        const configPath = path.join(templatePath, "config.json");
-        const variables = {};
-
-        if (fs.existsSync(configPath)) {
-            const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-            if (config.prompts && Array.isArray(config.prompts)) {
-                for (const prompt of config.prompts) {
-                    const answer = await this.safeQuestion(`   ❓ ${prompt.message} (${prompt.name}): `);
-                    variables[prompt.name] = answer || prompt.default || '';
+    async listAvailableTemplates() {
+        const allTemplates = new Set();
+        for (const source of this.templateSources) {
+            if (source.name === 'local') {
+                const localTemplatesPath = source.path;
+                if (fs.existsSync(localTemplatesPath)) {
+                    const templates = fs.readdirSync(localTemplatesPath, { withFileTypes: true })
+                        .filter(dirent => { return dirent.isDirectory(); })
+                        .map(dirent => { return dirent.name; });
+                    templates.forEach(t => { return allTemplates.add(t); });
                 }
             }
         }
-        return variables;
+        return Array.from(allTemplates);
+    }
+
+    async getTemplatePath(templateName) {
+        for (const source of this.templateSources) {
+            if (source.name === 'local') {
+                const templatePath = path.join(source.path, templateName);
+                if (fs.existsSync(templatePath)) {
+                    return templatePath;
+                }
+            }
+        }
+        return null;
+    }
+
+    async promptForVariables(templateName) {
+        const templatePath = await this.getTemplatePath(templateName);
+        if (!templatePath) {
+            console.log(`    ⚠️  Template '${templateName}' not found.`);
+            return {};
+        }
+        const configPath = path.join(templatePath, '_config.json');
+        if (fs.existsSync(configPath)) {
+            try {
+                const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+                const variables = {};
+                for (const key in config.prompts) {
+                    const prompt = config.prompts[key];
+                    let answer = await this.safeQuestion(`❓ ${prompt.message || key}: `);
+                    if (prompt.type === 'boolean') {
+                        answer = answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes';
+                    } else if (prompt.type === 'number') {
+                        answer = parseFloat(answer);
+                    }
+                    variables[key] = answer;
+                }
+                return variables;
+            } catch (jsonConfigReadError) {
+                console.error(`    ❌ Error reading template config for '${templateName}': ${jsonConfigReadError.message}`);
+                return {};
+            }
+        }
+        return {};
+    }
+
+    async generate(templateName, variables) {
+        const templatePath = await this.getTemplatePath(templateName);
+        if (!templatePath) {
+            return;
+        }
+        console.log(`    🚀 Generating '${templateName}' template with full route and token mutations...`);
+
+        const renderFile = async (srcPath, destPath, vars) => {
+            const content = fs.readFileSync(srcPath, 'utf8');
+            let renderedContent = content;
+            for (const key in vars) {
+                renderedContent = renderedContent.replace(new RegExp(`{{\\s*${key}\\s*}}`, 'g'), vars[key]);
+            }
+            fs.writeFileSync(destPath, renderedContent);
+        };
+
+        const processDirectory = async (currentSrcDir, currentDestDir, vars) => {
+            fs.mkdirSync(currentDestDir, { recursive: true });
+            const items = fs.readdirSync(currentSrcDir, { withFileTypes: true });
+            for (const item of items) {
+                if (item.name === '_config.json' || item.name === 'config.json') {
+                    continue;
+                }
+                
+                let mutatedName = item.name;
+                for (const key in vars) {
+                    mutatedName = mutatedName.replace(new RegExp(`{{\\s*${key}\\s*}}`, 'g'), vars[key]);
+                }
+                mutatedName = mutatedName.replace(/_([a-zA-Z0-9_]+)_/g, (match, p1) => { return vars[p1] || match; });
+
+                const srcItemPath = path.join(currentSrcDir, item.name);
+                const destItemPath = path.join(currentDestDir, mutatedName);
+
+                if (item.isDirectory()) {
+                    await processDirectory(srcItemPath, destItemPath, vars);
+                } else {
+                    await renderFile(srcItemPath, destItemPath, vars);
+                }
+            }
+        };
+        await processDirectory(templatePath, this.baseDir, variables);
+        console.log(`    ✅ Template '${templateName}' generated successfully.`);
     }
 }
 
+/**
+ * Generiert einen sauberen ASCII-Layout-Baum für das automatisierte README-Dokument.
+ */
 function buildAsciiTree(dir, prefix = '') {
     const results = [];
     try {
         const files = fs.readdirSync(dir);
-        const filtered = files.filter(f => !IGNORED_DIRS.has(f) && !f.startsWith('.'));
+        const filtered = files.filter(f => { return !IGNORED_DIRS.has(f) && !f.startsWith('.'); });
 
         filtered.forEach((file, index) => {
             const isLast = index === filtered.length - 1;
@@ -457,14 +981,78 @@ function buildAsciiTree(dir, prefix = '') {
                 results.push(...buildAsciiTree(fullPath, newPrefix));
             }
         });
-    } catch (e) {}
+    } catch (asciiTreeTreeError) {}
     return results;
 }
 
 // ============================================================
-// IMPORT EXTRACTION UTILITIES
+// STRUKTURELLES IMPLEMENTIERUNGSHELFER SYSTEM
 // ============================================================
+
+/**
+ * KORREKTUR: Prüft, ob ein extrahierter Import-Bezeichner im Programmcode verwendet wird.
+ * Führt den regulären Ausdruck nun gegen das tatsächliche executionCode-Skelett aus, anstatt gegen den Alias selbst.
+ */
+function analyzeIdentifierUsage(pkg, identifiers, executionCode) {
+    const autoUsedMarkers = new Set(['__SIDE_EFFECT__', '__DYNAMIC__', '__REEXPORT__', '__TYPE_ONLY__']);
+    for (const id of identifiers) {
+        if (autoUsedMarkers.has(id)) {
+            return true;
+        }
+    }
+    for (const id of identifiers) {
+        const escaped = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        if (new RegExp(`\\b${escaped}\\b`).test(executionCode)) {
+            return true;
+        }
+    }
+    const aliases = PACKAGE_IMPORT_ALIASES[pkg] || [];
+    for (const alias of aliases) {
+        const escapedAlias = alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        if (new RegExp(`\\b${escapedAlias}\\b`).test(executionCode)) { // 👈 Use the properly escaped token here
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Findet Pakete, die im Programmcode importiert wurden, aber nicht in der package.json deklariert sind.
+ */
+function detectGhostDependencies(allImportedPackages, declaredDeps, declaredDevDeps) {
+    const allDeclared = new Set([...declaredDeps, ...declaredDevDeps]);
+    const ghosts = new Set();
+    for (const pkg of allImportedPackages) {
+        if (!allDeclared.has(pkg) && !builtinModules.includes(pkg)) {
+            ghosts.add(pkg);
+        }
+    }
+    return ghosts;
+}
+
+/**
+ * Ermittelt ungenutzte verwaiste Abhängigkeiten aus der package.json.
+ */
+function detectOrphanedDependencies(declaredDeps, allImportedPackages, binariesUsed, devTooling) {
+    const orphans = new Set();
+    for (const dep of declaredDeps) {
+        if (devTooling.has(dep) || dep.startsWith('@types/')) {
+            continue;
+        }
+        const binaryPkg = Object.values(BINARY_TO_PACKAGE_MAP).find(p => { return p === dep; });
+        if (binaryPkg && binariesUsed.has(dep)) {
+            continue;
+        }
+        if (!allImportedPackages.has(dep)) {
+            orphans.add(dep);
+        }
+    }
+    return orphans;
+}
+
 function extractImportsFromAST(ast, fileRawDeps, importedIdentifiers, importedLocations, exportedSymbols, stats, currentFilePath) {
+    extractAdvancedSymbols(ast, currentFilePath, stats);
+    
     walk.simple(ast, {
         ImportDeclaration(node) {
             const importSource = node.source.value;
@@ -472,8 +1060,12 @@ function extractImportsFromAST(ast, fileRawDeps, importedIdentifiers, importedLo
 
             if (pkg && !builtinModules.includes(pkg)) {
                 fileRawDeps.add(pkg);
-                if (!importedIdentifiers.has(pkg)) importedIdentifiers.set(pkg, new Set());
-                if (!importedLocations.has(pkg)) importedLocations.set(pkg, []);
+                if (!importedIdentifiers.has(pkg)) {
+                    importedIdentifiers.set(pkg, new Set());
+                }
+                if (!importedLocations.has(pkg)) {
+                    importedLocations.set(pkg, []);
+                }
                 importedLocations.get(pkg).push(node.loc?.start?.line ?? 0);
 
                 node.specifiers.forEach(spec => {
@@ -486,13 +1078,19 @@ function extractImportsFromAST(ast, fileRawDeps, importedIdentifiers, importedLo
                         }
                     }
                 });
-                if (node.specifiers.length === 0) importedIdentifiers.get(pkg).add('__SIDE_EFFECT__');
+                if (node.specifiers.length === 0) {
+                    importedIdentifiers.get(pkg).add('__SIDE_EFFECT__');
+                }
             } else if (importSource.startsWith('.') || importSource.startsWith('/')) {
                 const resolvedPath = path.resolve(path.dirname(currentFilePath), importSource);
                 const normalizedPath = path.normalize(resolvedPath);
 
-                if (!stats.localFileImports) stats.localFileImports = new Map();
-                if (!stats.localFileImports.has(normalizedPath)) stats.localFileImports.set(normalizedPath, new Set());
+                if (!stats.localFileImports) {
+                    stats.localFileImports = new Map();
+                }
+                if (!stats.localFileImports.has(normalizedPath)) {
+                    stats.localFileImports.set(normalizedPath, new Set());
+                }
 
                 node.specifiers.forEach(spec => {
                     if (spec.type === 'ImportDefaultSpecifier' || spec.type === 'ImportNamespaceSpecifier') {
@@ -513,8 +1111,12 @@ function extractImportsFromAST(ast, fileRawDeps, importedIdentifiers, importedLo
                     const pkg = cleanPackageName(arg.value);
                     if (pkg && !builtinModules.includes(pkg)) {
                         fileRawDeps.add(pkg);
-                        if (!importedIdentifiers.has(pkg)) importedIdentifiers.set(pkg, new Set());
-                        if (!importedLocations.has(pkg)) importedLocations.set(pkg, []);
+                        if (!importedIdentifiers.has(pkg)) {
+                            importedIdentifiers.set(pkg, new Set());
+                        }
+                        if (!importedLocations.has(pkg)) {
+                            importedLocations.set(pkg, []);
+                        }
                         importedLocations.get(pkg).push(node.loc?.start?.line ?? 0);
 
                         const extractBindings = (idNode) => {
@@ -522,8 +1124,12 @@ function extractImportsFromAST(ast, fileRawDeps, importedIdentifiers, importedLo
                                 importedIdentifiers.get(pkg).add(idNode.name);
                             } else if (idNode.type === 'ObjectPattern') {
                                 idNode.properties.forEach(p => {
-                                    if (p.value && p.value.type === 'Identifier') importedIdentifiers.get(pkg).add(p.value.name);
-                                    if (p.key && p.key.type === 'Identifier') importedIdentifiers.get(pkg).add(p.key.name);
+                                    if (p.value && p.value.type === 'Identifier') {
+                                        importedIdentifiers.get(pkg).add(p.value.name);
+                                    }
+                                    if (p.key && p.key.type === 'Identifier') {
+                                        importedIdentifiers.get(pkg).add(p.key.name);
+                                    }
                                 });
                             }
                         };
@@ -537,7 +1143,9 @@ function extractImportsFromAST(ast, fileRawDeps, importedIdentifiers, importedLo
                 const pkg = cleanPackageName(node.source.value);
                 if (pkg && !builtinModules.includes(pkg)) {
                     fileRawDeps.add(pkg);
-                    if (!importedIdentifiers.has(pkg)) importedIdentifiers.set(pkg, new Set());
+                    if (!importedIdentifiers.has(pkg)) {
+                        importedIdentifiers.set(pkg, new Set());
+                    }
                     importedIdentifiers.get(pkg).add('__DYNAMIC__');
                 }
             }
@@ -546,23 +1154,33 @@ function extractImportsFromAST(ast, fileRawDeps, importedIdentifiers, importedLo
             if (node.declaration) {
                 if (node.declaration.type === 'VariableDeclaration') {
                     node.declaration.declarations.forEach(decl => {
-                        if (decl.id.type === 'Identifier') exportedSymbols.set(decl.id.name, { type: 'variable', loc: decl.id.loc.start });
+                        if (decl.id.type === 'Identifier') {
+                            exportedSymbols.set(decl.id.name, { type: 'variable', loc: decl.id.loc.start });
+                        }
                     });
                 } else if (node.declaration.type === 'FunctionDeclaration') {
-                    if (node.declaration.id) exportedSymbols.set(node.declaration.id.name, { type: 'function', loc: node.declaration.id.loc.start });
+                    if (node.declaration.id) {
+                        exportedSymbols.set(node.declaration.id.name, { type: 'function', loc: node.declaration.id.loc.start });
+                    }
                 } else if (node.declaration.type === 'ClassDeclaration') {
-                    if (node.declaration.id) exportedSymbols.set(node.declaration.id.name, { type: 'class', loc: node.declaration.id.loc.start });
+                    if (node.declaration.id) {
+                        exportedSymbols.set(node.declaration.id.name, { type: 'class', loc: node.declaration.id.loc.start });
+                    }
                 }
             } else if (node.specifiers) {
                 node.specifiers.forEach(spec => {
-                    if (spec.exported.type === 'Identifier') exportedSymbols.set(spec.exported.name, { type: 'namedExport', loc: spec.exported.loc.start });
+                    if (spec.exported.type === 'Identifier') {
+                        exportedSymbols.set(spec.exported.name, { type: 'namedExport', loc: spec.exported.loc.start });
+                    }
                 });
             }
             if (node.source && node.source.type === 'Literal' && typeof node.source.value === 'string') {
                 const pkg = cleanPackageName(node.source.value);
                 if (pkg && !builtinModules.includes(pkg)) {
                     fileRawDeps.add(pkg);
-                    if (!importedIdentifiers.has(pkg)) importedIdentifiers.set(pkg, new Set());
+                    if (!importedIdentifiers.has(pkg)) {
+                        importedIdentifiers.set(pkg, new Set());
+                    }
                     importedIdentifiers.get(pkg).add('__REEXPORT__');
                 }
             }
@@ -572,7 +1190,9 @@ function extractImportsFromAST(ast, fileRawDeps, importedIdentifiers, importedLo
                 const pkg = cleanPackageName(node.source.value);
                 if (pkg && !builtinModules.includes(pkg)) {
                     fileRawDeps.add(pkg);
-                    if (!importedIdentifiers.has(pkg)) importedIdentifiers.set(pkg, new Set());
+                    if (!importedIdentifiers.has(pkg)) {
+                        importedIdentifiers.set(pkg, new Set());
+                    }
                     importedIdentifiers.get(pkg).add('__REEXPORT__');
                 }
             }
@@ -580,6 +1200,9 @@ function extractImportsFromAST(ast, fileRawDeps, importedIdentifiers, importedLo
     });
 }
 
+/**
+ * Textbasierter Regex-Ersatz-Parser, falls Acorn auf Syntaxfehler stößt.
+ */
 function extractImportsFromText(codeLines, fileRawDeps, importedIdentifiers, importedLocations, stats, currentFilePath) {
     codeLines.forEach((line, lineIdx) => {
         const lineNum = lineIdx + 1;
@@ -589,15 +1212,23 @@ function extractImportsFromText(codeLines, fileRawDeps, importedIdentifiers, imp
             const pkg = cleanPackageName(importSource);
             if (pkg && !builtinModules.includes(pkg)) {
                 fileRawDeps.add(pkg);
-                if (!importedIdentifiers.has(pkg)) importedIdentifiers.set(pkg, new Set());
+                if (!importedIdentifiers.has(pkg)) {
+                    importedIdentifiers.set(pkg, new Set());
+                }
                 importedIdentifiers.get(pkg).add('__TYPE_ONLY__');
-                if (!importedLocations.has(pkg)) importedLocations.set(pkg, []);
+                if (!importedLocations.has(pkg)) {
+                    importedLocations.set(pkg, []);
+                }
                 importedLocations.get(pkg).push(lineNum);
             } else if (importSource.startsWith(".") || importSource.startsWith("/")) {
                 const resolvedPath = path.resolve(path.dirname(currentFilePath), importSource);
                 const normalizedPath = path.normalize(resolvedPath);
-                if (!stats.localFileImports) stats.localFileImports = new Map();
-                if (!stats.localFileImports.has(normalizedPath)) stats.localFileImports.set(normalizedPath, new Set());
+                if (!stats.localFileImports) {
+                    stats.localFileImports = new Map();
+                }
+                if (!stats.localFileImports.has(normalizedPath)) {
+                    stats.localFileImports.set(normalizedPath, new Set());
+                }
                 stats.localFileImports.get(normalizedPath).add('__TYPE_ONLY__');
             }
             return;
@@ -610,15 +1241,23 @@ function extractImportsFromText(codeLines, fileRawDeps, importedIdentifiers, imp
             const pkg = cleanPackageName(importSource);
             if (pkg && !builtinModules.includes(pkg)) {
                 fileRawDeps.add(pkg);
-                if (!importedIdentifiers.has(pkg)) importedIdentifiers.set(pkg, new Set());
+                if (!importedIdentifiers.has(pkg)) {
+                    importedIdentifiers.set(pkg, new Set());
+                }
                 importedIdentifiers.get(pkg).add(id);
-                if (!importedLocations.has(pkg)) importedLocations.set(pkg, []);
+                if (!importedLocations.has(pkg)) {
+                    importedLocations.set(pkg, []);
+                }
                 importedLocations.get(pkg).push(lineNum);
             } else if (importSource.startsWith(".") || importSource.startsWith("/")) {
                 const resolvedPath = path.resolve(path.dirname(currentFilePath), importSource);
                 const normalizedPath = path.normalize(resolvedPath);
-                if (!stats.localFileImports) stats.localFileImports = new Map();
-                if (!stats.localFileImports.has(normalizedPath)) stats.localFileImports.set(normalizedPath, new Set());
+                if (!stats.localFileImports) {
+                    stats.localFileImports = new Map();
+                }
+                if (!stats.localFileImports.has(normalizedPath)) {
+                    stats.localFileImports.set(normalizedPath, new Set());
+                }
                 stats.localFileImports.get(normalizedPath).add(id);
             }
             return;
@@ -629,28 +1268,38 @@ function extractImportsFromText(codeLines, fileRawDeps, importedIdentifiers, imp
             const importSource = esmNamedMatch[2];
             const pkg = cleanPackageName(importSource);
             if (pkg && !builtinModules.includes(pkg)) {
-                if (!importedIdentifiers.has(pkg)) importedIdentifiers.set(pkg, new Set());
+                if (!importedIdentifiers.has(pkg)) {
+                    importedIdentifiers.set(pkg, new Set());
+                }
                 fileRawDeps.add(pkg);
                 esmNamedMatch[1].split(',').forEach(part => {
                     const chunk = part.trim();
-                    if (!chunk) return;
+                    if (!chunk) {
+                        return;
+                    }
                     const id = chunk.includes(' as ') ? chunk.split(' as ')[1].trim() : chunk;
                     importedIdentifiers.get(pkg).add(id);
-                    if (chunk.includes(' as ')) importedIdentifiers.get(pkg).add(chunk.split(' as ')[0].trim());
                 });
-                if (!importedLocations.has(pkg)) importedLocations.set(pkg, []);
+                if (!importedLocations.has(pkg)) {
+                    importedLocations.set(pkg, []);
+                }
                 importedLocations.get(pkg).push(lineNum);
             } else if (importSource.startsWith(".") || importSource.startsWith("/")) {
                 const resolvedPath = path.resolve(path.dirname(currentFilePath), importSource);
                 const normalizedPath = path.normalize(resolvedPath);
-                if (!stats.localFileImports) stats.localFileImports = new Map();
-                if (!stats.localFileImports.has(normalizedPath)) stats.localFileImports.set(normalizedPath, new Set());
+                if (!stats.localFileImports) {
+                    stats.localFileImports = new Map();
+                }
+                if (!stats.localFileImports.has(normalizedPath)) {
+                    stats.localFileImports.set(normalizedPath, new Set());
+                }
                 esmNamedMatch[1].split(',').forEach(part => {
                     const chunk = part.trim();
-                    if (!chunk) return;
+                    if (!chunk) {
+                        return;
+                    }
                     const id = chunk.includes(' as ') ? chunk.split(' as ')[1].trim() : chunk;
                     stats.localFileImports.get(normalizedPath).add(id);
-                    if (chunk.includes(' as ')) stats.localFileImports.get(normalizedPath).add(chunk.split(' as ')[0].trim());
                 });
             }
             return;
@@ -662,64 +1311,94 @@ function extractImportsFromText(codeLines, fileRawDeps, importedIdentifiers, imp
             const pkg = cleanPackageName(importSource);
             if (pkg && !builtinModules.includes(pkg)) {
                 fileRawDeps.add(pkg);
-                if (!importedIdentifiers.has(pkg)) importedIdentifiers.set(pkg, new Set());
+                if (!importedIdentifiers.has(pkg)) {
+                    importedIdentifiers.set(pkg, new Set());
+                }
                 importedIdentifiers.get(pkg).add('__SIDE_EFFECT__');
-                if (!importedLocations.has(pkg)) importedLocations.set(pkg, []);
+                if (!importedLocations.has(pkg)) {
+                    importedLocations.set(pkg, []);
+                }
                 importedLocations.get(pkg).push(lineNum);
             } else if (importSource.startsWith(".") || importSource.startsWith("/")) {
                 const resolvedPath = path.resolve(path.dirname(currentFilePath), importSource);
                 const normalizedPath = path.normalize(resolvedPath);
-                if (!stats.localFileImports) stats.localFileImports = new Map();
-                if (!stats.localFileImports.has(normalizedPath)) stats.localFileImports.set(normalizedPath, new Set());
+                if (!stats.localFileImports) {
+                    stats.localFileImports = new Map();
+                }
+                if (!stats.localFileImports.has(normalizedPath)) {
+                    stats.localFileImports.set(normalizedPath, new Set());
+                }
                 stats.localFileImports.get(normalizedPath).add('__SIDE_EFFECT__');
             }
             return;
         }
 
-        const cjsMatch = line.match(/\b(?:const|let|var)\s+([a-zA-Z0-9_$]+)\s*=\s*require\s*\(\s*['"]([^'"]+)['"]\s*\)/);
+        const cjsMatch = line.match(/\b(const|let|var)\s+([a-zA-Z0-9_$]+)\s*=\s*require\s*\(\s*['"]([^'"]+)['"]\s*\)/);
         if (cjsMatch) {
-            const id = cjsMatch[1];
-            const importSource = cjsMatch[2];
+            const id = cjsMatch[2];
+            const importSource = cjsMatch[3];
             const pkg = cleanPackageName(importSource);
             if (pkg && !builtinModules.includes(pkg)) {
                 fileRawDeps.add(pkg);
-                if (!importedIdentifiers.has(pkg)) importedIdentifiers.set(pkg, new Set());
+                if (!importedIdentifiers.has(pkg)) {
+                    importedIdentifiers.set(pkg, new Set());
+                }
                 importedIdentifiers.get(pkg).add(id);
-                if (!importedLocations.has(pkg)) importedLocations.set(pkg, []);
+                if (!importedLocations.has(pkg)) {
+                    importedLocations.set(pkg, []);
+                }
                 importedLocations.get(pkg).push(lineNum);
             } else if (importSource.startsWith(".") || importSource.startsWith("/")) {
                 const resolvedPath = path.resolve(path.dirname(currentFilePath), importSource);
                 const normalizedPath = path.normalize(resolvedPath);
-                if (!stats.localFileImports) stats.localFileImports = new Map();
-                if (!stats.localFileImports.has(normalizedPath)) stats.localFileImports.set(normalizedPath, new Set());
+                if (!stats.localFileImports) {
+                    stats.localFileImports = new Map();
+                }
+                if (!stats.localFileImports.has(normalizedPath)) {
+                    stats.localFileImports.set(normalizedPath, new Set());
+                }
                 stats.localFileImports.get(normalizedPath).add(id);
             }
             return;
         }
 
-        const cjsDestructMatch = line.match(/\b(?:const|let|var)\s*\{([^}]+)\}\s*=\s*require\s*\(\s*['"]([^'"]+)['"]\s*\)/);
+        const cjsDestructMatch = line.match(/\b(const|let|var)\s*\{([^}]+)\}\s*=\s*require\s*\(\s*['"]([^'"]+)['"]\s*\)/);
         if (cjsDestructMatch) {
-            const importSource = cjsDestructMatch[2];
+            const importSource = cjsDestructMatch[3];
             const pkg = cleanPackageName(importSource);
             if (pkg && !builtinModules.includes(pkg)) {
-                if (!importedIdentifiers.has(pkg)) importedIdentifiers.set(pkg, new Set());
+                if (!importedIdentifiers.has(pkg)) {
+                    importedIdentifiers.set(pkg, new Set());
+                }
                 fileRawDeps.add(pkg);
-                cjsDestructMatch[1].split(',').forEach(part => {
+                cjsDestructMatch[2].split(',').forEach(part => {
                     const chunk = part.trim();
-                    if (!chunk) return;
+                    if (!chunk) {
+                        return;
+                    }
                     const id = chunk.includes(':') ? chunk.split(':')[1].trim() : chunk;
                     importedIdentifiers.get(pkg).add(id);
                 });
-                if (!importedLocations.has(pkg)) importedLocations.set(pkg, []);
+                
+                // KORREKTUR: Korrekte Initialisierung des Arrays innerhalb von importedLocations zur Vermeidung von TypeErrors
+                if (!importedLocations.has(pkg)) {
+                    importedLocations.set(pkg, []); 
+                }
                 importedLocations.get(pkg).push(lineNum);
             } else if (importSource.startsWith(".") || importSource.startsWith("/")) {
                 const resolvedPath = path.resolve(path.dirname(currentFilePath), importSource);
                 const normalizedPath = path.normalize(resolvedPath);
-                if (!stats.localFileImports) stats.localFileImports = new Map();
-                if (!stats.localFileImports.has(normalizedPath)) stats.localFileImports.set(normalizedPath, new Set());
-                cjsDestructMatch[1].split(',').forEach(part => {
+                if (!stats.localFileImports) {
+                    stats.localFileImports = new Map();
+                }
+                if (!stats.localFileImports.has(normalizedPath)) {
+                    stats.localFileImports.set(normalizedPath, new Set());
+                }
+                cjsDestructMatch[2].split(',').forEach(part => {
                     const chunk = part.trim();
-                    if (!chunk) return;
+                    if (!chunk) {
+                        return;
+                    }
                     const id = chunk.includes(':') ? chunk.split(':')[1].trim() : chunk;
                     stats.localFileImports.get(normalizedPath).add(id);
                 });
@@ -733,62 +1412,32 @@ function extractImportsFromText(codeLines, fileRawDeps, importedIdentifiers, imp
             const pkg = cleanPackageName(importSource);
             if (pkg && !builtinModules.includes(pkg)) {
                 fileRawDeps.add(pkg);
-                if (!importedIdentifiers.has(pkg)) importedIdentifiers.set(pkg, new Set());
+                if (!importedIdentifiers.has(pkg)) {
+                    importedIdentifiers.set(pkg, new Set());
+                }
                 importedIdentifiers.get(pkg).add('__DYNAMIC__');
-                if (!importedLocations.has(pkg)) importedLocations.set(pkg, []);
+                if (!importedLocations.has(pkg)) {
+                    importedLocations.set(pkg, []);
+                }
                 importedLocations.get(pkg).push(lineNum);
             } else if (importSource.startsWith(".") || importSource.startsWith("/")) {
                 const resolvedPath = path.resolve(path.dirname(currentFilePath), importSource);
                 const normalizedPath = path.normalize(resolvedPath);
-                if (!stats.localFileImports) stats.localFileImports = new Map();
-                if (!stats.localFileImports.has(normalizedPath)) stats.localFileImports.set(normalizedPath, new Set());
+                if (!stats.localFileImports) {
+                    stats.localFileImports = new Map();
+                }
+                if (!stats.localFileImports.has(normalizedPath)) {
+                    stats.localFileImports.set(normalizedPath, new Set());
+                }
                 stats.localFileImports.get(normalizedPath).add('__DYNAMIC__');
             }
         }
     });
 }
 
-function analyzeIdentifierUsage(pkg, identifiers, executionCode) {
-    const autoUsedMarkers = new Set(['__SIDE_EFFECT__', '__DYNAMIC__', '__REEXPORT__', '__TYPE_ONLY__']);
-    for (const id of identifiers) {
-        if (autoUsedMarkers.has(id)) return true;
-    }
-    const knownAliases = PACKAGE_IMPORT_ALIASES[pkg] || [];
-    for (const identifier of identifiers) {
-        if (!identifier || identifier.startsWith('__')) continue;
-        const escaped = identifier.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        if (new RegExp(`\\b${escaped}\\b`).test(executionCode)) return true;
-    }
-    for (const alias of knownAliases) {
-        const escaped = alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        if (new RegExp(`\\b${escaped}\\b`).test(executionCode)) return true;
-    }
-    return false;
-}
-
-function detectGhostDependencies(allImportedPackages, declaredDeps, declaredDevDeps) {
-    const allDeclared = new Set([...declaredDeps, ...declaredDevDeps]);
-    const ghosts = new Set();
-    for (const pkg of allImportedPackages) {
-        if (!allDeclared.has(pkg) && !builtinModules.includes(pkg)) ghosts.add(pkg);
-    }
-    return ghosts;
-}
-
-function detectOrphanedDependencies(declaredDeps, allImportedPackages, binariesUsed, devTooling) {
-    const orphans = new Set();
-    for (const dep of declaredDeps) {
-        if (devTooling.has(dep) || dep.startsWith('@types/')) continue;
-        const binaryPkg = Object.values(BINARY_TO_PACKAGE_MAP).find(p => p === dep);
-        if (binaryPkg && binariesUsed.has(dep)) continue;
-        if (!allImportedPackages.has(dep)) orphans.add(dep);
-    }
-    return orphans;
-}
-
-// ============================================================
-// WORKSPACE SCANNING COMPILER LIFECYCLE
-// ============================================================
+/**
+ * Kernfunktion zur iterativen Rekursion durch alle Ordnerstrukturen des Workspaces.
+ */
 function scanWorkspace(dir, stats, rootNamespace, detectedFrameworks) {
     const files = fs.readdirSync(dir);
     for (const file of files) {
@@ -801,24 +1450,50 @@ function scanWorkspace(dir, stats, rootNamespace, detectedFrameworks) {
             }
         } else {
             const ext = path.extname(file);
-            if (file === 'index.html' || REGEX_PATTERNS.configFile.test(file)) stats.hasHtml = true;
-            if (REGEX_PATTERNS.testFile.test(file)) stats.hasTests = true;
-            if (ext === '.ts' || ext === '.tsx') stats.tsFiles++;
-            if (ext === '.js' || ext === '.jsx' || ext === '.mjs') stats.jsFiles++;
+            if (file === 'index.html' || REGEX_PATTERNS.configFile.test(file)) {
+                stats.hasHtml = true;
+            }
+            if (REGEX_PATTERNS.testFile.test(file)) {
+                stats.hasTests = true;
+            }
+            if (ext === '.ts' || ext === '.tsx') {
+                stats.tsFiles++;
+            }
+            if (ext === '.js' || ext === '.jsx' || ext === '.mjs') {
+                stats.jsFiles++;
+            }
 
-            if (REGEX_PATTERNS.nextjsPage.test(fullPath)) stats.frameworkFiles.nextjs.pages.add(fullPath);
-            if (REGEX_PATTERNS.nextjsApi.test(fullPath)) stats.frameworkFiles.nextjs.apiRoutes.add(fullPath);
-            if (REGEX_PATTERNS.nextjsComponent.test(fullPath)) stats.frameworkFiles.nextjs.components.add(fullPath);
-            if (REGEX_PATTERNS.nuxtPage.test(fullPath)) stats.frameworkFiles.nuxt.pages.add(fullPath);
-            if (REGEX_PATTERNS.nuxtComponent.test(fullPath)) stats.frameworkFiles.nuxt.components.add(fullPath);
-            if (REGEX_PATTERNS.sveltekitPage.test(fullPath)) stats.frameworkFiles.sveltekit.pages.add(fullPath);
-            if (REGEX_PATTERNS.sveltekitComponent.test(fullPath)) stats.frameworkFiles.sveltekit.components.add(fullPath);
-            if (REGEX_PATTERNS.reactHook.test(fullPath)) stats.frameworkFiles.react.hooks.add(fullPath);
-            if (REGEX_PATTERNS.vueComposable.test(fullPath)) stats.frameworkFiles.vue.composables.add(fullPath);
+            if (REGEX_PATTERNS.nextjsPage.test(fullPath)) {
+                stats.frameworkFiles.nextjs.pages.add(fullPath);
+            }
+            if (REGEX_PATTERNS.nextjsApi.test(fullPath)) {
+                stats.frameworkFiles.nextjs.apiRoutes.add(fullPath);
+            }
+            if (REGEX_PATTERNS.nextjsComponent.test(fullPath)) {
+                stats.frameworkFiles.nextjs.components.add(fullPath);
+            }
+            if (REGEX_PATTERNS.nuxtPage.test(fullPath)) {
+                stats.frameworkFiles.nuxt.pages.add(fullPath);
+            }
+            if (REGEX_PATTERNS.nuxtComponent.test(fullPath)) {
+                stats.frameworkFiles.nuxt.components.add(fullPath);
+            }
+            if (REGEX_PATTERNS.sveltekitPage.test(fullPath)) {
+                stats.frameworkFiles.sveltekit.pages.add(fullPath);
+            }
+            if (REGEX_PATTERNS.sveltekitComponent.test(fullPath)) {
+                stats.frameworkFiles.sveltekit.components.add(fullPath);
+            }
+            if (REGEX_PATTERNS.reactHook.test(fullPath)) {
+                stats.frameworkFiles.react.hooks.add(fullPath);
+            }
+            if (REGEX_PATTERNS.vueComposable.test(fullPath)) {
+                stats.frameworkFiles.vue.composables.add(fullPath);
+            }
 
             if (VALID_EXTENSIONS.has(ext)) {
                 stats.scannedFiles++;
-                stats.scannedFilePaths.push(fullPath); // Fix: Tracker for loops
+                stats.scannedFilePaths.push(fullPath);
                 const rawContent = readFileSyncNormalized(fullPath);
                 const content = rawContent.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
 
@@ -845,10 +1520,15 @@ function scanWorkspace(dir, stats, rootNamespace, detectedFrameworks) {
                         let match;
                         while ((match = patternRegex.exec(content)) !== null) {
                             const line = content.substring(0, match.index).split("\n").length;
-                            if (patternName === "insecureCrypto") stats.quality.insecureCryptoUsage.push({ filePath: fullPath, type: patternName, line, code: match[0] });
-                            else if (patternName === "sqlInjection") stats.quality.sqlInjectionVulnerabilities.push({ filePath: fullPath, type: patternName, line, code: match[0] });
-                            else if (patternName === "xssVulnerability") stats.quality.xssVulnerabilities.push({ filePath: fullPath, type: patternName, line, code: match[0] });
-                            else stats.quality.insecurePatterns.push({ filePath: fullPath, type: patternName, line, code: match[0] });
+                            if (patternName === "insecureCrypto") {
+                                stats.quality.insecureCryptoUsage.push({ filePath: fullPath, type: patternName, line, code: match[0] });
+                            } else if (patternName === "sqlInjection") {
+                                stats.quality.sqlInjectionVulnerabilities.push({ filePath: fullPath, type: patternName, line, code: match[0] });
+                            } else if (patternName === "xssVulnerability") {
+                                stats.quality.xssVulnerabilities.push({ filePath: fullPath, type: patternName, line, code: match[0] });
+                            } else {
+                                stats.quality.insecurePatterns.push({ filePath: fullPath, type: patternName, line, code: match[0] });
+                            }
                         }
                     } else if (patternName.startsWith("largeImageImport")) {
                         patternRegex.lastIndex = 0;
@@ -858,7 +1538,7 @@ function scanWorkspace(dir, stats, rootNamespace, detectedFrameworks) {
                             stats.quality.largeImageImports.push({ filePath: fullPath, type: patternName, line, code: match[0] });
                         }
                     } else if (patternName.startsWith("unoptimizedLoop")) {
-                        patternRegex.lastIndex = 0;
+                        patternRegex.lastIndex = 0; // 👈 Add this line to reset the pointer for the next file pass
                         let match;
                         while ((match = patternRegex.exec(content)) !== null) {
                             const line = content.substring(0, match.index).split("\n").length;
@@ -874,8 +1554,12 @@ function scanWorkspace(dir, stats, rootNamespace, detectedFrameworks) {
                     stats.envVars.add(envMatch[1]);
                     fileHasEnv = true;
                 }
-                if (fileHasEnv) stats.filesWithEnvVars.add(fullPath);
-                if (content.includes('import ') || content.includes('export ')) stats.usesEsm = true;
+                if (fileHasEnv) {
+                    stats.filesWithEnvVars.add(fullPath);
+                }
+                if (content.includes('import ') || content.includes('export ')) {
+                    stats.usesEsm = true;
+                }
 
                 FrameworkAnalyzer.analyzeFile(fullPath, content, stats, detectedFrameworks);
 
@@ -891,13 +1575,15 @@ function scanWorkspace(dir, stats, rootNamespace, detectedFrameworks) {
                 if (ast) {
                     const currentFileExportedSymbols = new Map();
                     extractImportsFromAST(ast, fileRawDeps, importedIdentifiers, importedLocations, currentFileExportedSymbols, stats, fullPath);
-                    if (currentFileExportedSymbols.size > 0) stats.exportedSymbols.set(fullPath, currentFileExportedSymbols);
+                    if (currentFileExportedSymbols.size > 0) {
+                        stats.exportedSymbols.set(fullPath, currentFileExportedSymbols);
+                    }
                 } else {
                     extractImportsFromText(codeLines, fileRawDeps, importedIdentifiers, importedLocations, stats, fullPath);
                 }
 
-                fileRawDeps.forEach(dep => stats.allImportedPackages.add(dep));
-                fileRawDeps.forEach(dep => stats.rawDeps.add(dep));
+                fileRawDeps.forEach(dep => { return stats.allImportedPackages.add(dep); });
+                fileRawDeps.forEach(dep => { return stats.rawDeps.add(dep); });
 
                 const executionCode = codeLines.filter(l => {
                     const t = l.trim();
@@ -907,7 +1593,9 @@ function scanWorkspace(dir, stats, rootNamespace, detectedFrameworks) {
                 for (const [pkg, identifiers] of importedIdentifiers.entries()) {
                     const isUsed = analyzeIdentifierUsage(pkg, identifiers, executionCode);
                     if (!isUsed && identifiers.size > 0) {
-                        if (!stats.unusedImportsPerFile.has(fullPath)) stats.unusedImportsPerFile.set(fullPath, new Map());
+                        if (!stats.unusedImportsPerFile.has(fullPath)) {
+                            stats.unusedImportsPerFile.set(fullPath, new Map());
+                        }
                         const lines = importedLocations.get(pkg) || [];
                         stats.unusedImportsPerFile.get(fullPath).set(pkg, lines);
                         stats.unusedDepsInCode.add(pkg);
@@ -919,249 +1607,125 @@ function scanWorkspace(dir, stats, rootNamespace, detectedFrameworks) {
 }
 
 // ============================================================
-// 🧱 CUSTOM STRUCTURAL HOISTED TEMPLATE MANAGER
+// 🌳 KNIP-LEVEL REACHABILITY TRAVERSAL ENGINE
 // ============================================================
-class TemplateManager {
-    constructor(baseDir, safeQuestion) {
-        this.baseDir = baseDir;
-        this.safeQuestion = safeQuestion;
-        this.templateSources = [{ name: 'local', path: path.join(this.baseDir, '.templates') }];
-    }
-
-    async listAvailableTemplates() {
-        const allTemplates = new Set();
-        for (const source of this.templateSources) {
-            if (source.name === 'local') {
-                const localTemplatesPath = source.path;
-                if (fs.existsSync(localTemplatesPath)) {
-                    const templates = fs.readdirSync(localTemplatesPath, { withFileTypes: true })
-                        .filter(dirent => dirent.isDirectory())
-                        .map(dirent => dirent.name);
-                    templates.forEach(t => allTemplates.add(t));
-                }
-            }
-        }
-        return Array.from(allTemplates);
-    }
-
-    async getTemplatePath(templateName) {
-        for (const source of this.templateSources) {
-            if (source.name === 'local') {
-                const templatePath = path.join(source.path, templateName);
-                if (fs.existsSync(templatePath)) return templatePath;
-            }
-        }
-        return null;
-    }
-
-    async promptForVariables(templateName) {
-        const templatePath = await this.getTemplatePath(templateName);
-        if (!templatePath) {
-            console.log(`   ⚠️  Template '${templateName}' not found.`);
-            return {};
-        }
-        const configPath = path.join(templatePath, '_config.json');
-        if (fs.existsSync(configPath)) {
-            try {
-                const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-                const variables = {};
-                for (const key in config.prompts) {
-                    const prompt = config.prompts[key];
-                    let answer = await this.safeQuestion(`❓ ${prompt.message || key}: `);
-                    if (prompt.type === 'boolean') answer = answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes';
-                    else if (prompt.type === 'number') answer = parseFloat(answer);
-                    variables[key] = answer;
-                }
-                return variables;
-            } catch (e) {
-                console.error(`   ❌ Error reading template config for '${templateName}': ${e.message}`);
-                return {};
-            }
-        }
-        return {};
-    }
-
-    async generate(templateName, variables) {
-        const templatePath = await this.getTemplatePath(templateName);
-        if (!templatePath) return;
-        console.log(`   🚀 Generating '${templateName}' template...`);
-
-        const renderFile = async (srcPath, destPath, vars) => {
-            const content = fs.readFileSync(srcPath, 'utf8');
-            let renderedContent = content;
-            for (const key in vars) {
-                renderedContent = renderedContent.replace(new RegExp(`{{\\s*${key}\\s*}}`, 'g'), vars[key]);
-            }
-            fs.writeFileSync(destPath, renderedContent);
-        };
-
-        const processDirectory = async (currentSrcDir, currentDestDir, vars) => {
-            fs.mkdirSync(currentDestDir, { recursive: true });
-            const items = fs.readdirSync(currentSrcDir, { withFileTypes: true });
-            for (const item of items) {
-                const srcItemPath = path.join(currentSrcDir, item.name);
-                const destItemPath = path.join(currentDestDir, item.name);
-                if (item.isDirectory()) {
-                    if (item.name !== '_config.json') await processDirectory(srcItemPath, destItemPath, vars);
-                } else {
-                    await renderFile(srcItemPath, destItemPath, vars);
-                }
-            }
-        };
-        await processDirectory(templatePath, this.baseDir, variables);
-        console.log(`   ✅ Template '${templateName}' generated successfully.`);
-    }
-}
-
-// ============================================================
-// 🌳 ADVANCED DEPENDENCY GRAPH ENGINE (Knip-level)
-// ============================================================
-class DependencyGraph {
+class KnipEcosystemGraph {
     constructor(stats) {
         this.stats = stats;
-        this.graph = new Map();
-        this.symbolToFilePath = new Map();
-        this.buildGraph();
+        this.reachableFiles = new Set();
+        this.usedSymbolsMap = new Map(); 
     }
 
-    buildGraph() {
-        // Fix: Uses tracked scannedFilePaths array instead of matching loop directly on number
-        for (const filePath of this.stats.scannedFilePaths) {
-            this.graph.set(filePath, { imports: new Set(), exports: new Set() });
-        }
-        for (const [filePath, exportedSymbolsMap] of this.stats.exportedSymbols.entries()) {
-            const node = this.graph.get(filePath);
-            if (node) {
-                for (const [symbolName] of exportedSymbolsMap.entries()) {
-                    node.exports.add(symbolName);
-                    this.symbolToFilePath.set(symbolName, filePath);
-                }
-            }
-        }
-        for (const [importerFilePath, importedSymbols] of this.stats.localFileImports.entries()) {
-            const importerNode = this.graph.get(importerFilePath);
-            if (importerNode) {
-                for (const importedSymbol of importedSymbols) {
-                    if (importedSymbol.startsWith(".") || importedSymbol.startsWith("/")) {
-                        const resolvedPath = path.normalize(path.resolve(path.dirname(importerFilePath), importedSymbol));
-                        if (this.graph.has(resolvedPath)) importerNode.imports.add(resolvedPath);
-                    } else {
-                        const exporterFilePath = this.symbolToFilePath.get(importedSymbol);
-                        if (exporterFilePath && this.graph.has(exporterFilePath)) importerNode.imports.add(exporterFilePath);
-                    }
-                }
-            }
-        }
-    }
+    /**
+     * Traversiert den Modulgraphen ausgehend von den Entrypoints, um erreichbare Dateien und Tokens zu mappen.
+     * @param {Array<string>} entrypoints Liste absoluter Dateipfade als Einstiegspunkte.
+     */
+    traceReachability(entrypoints) {
+        const queue = [...entrypoints];
+        const visited = new Set();
 
-    getDependents(filePath) {
-        const dependents = new Set();
-        for (const [importer, node] of this.graph.entries()) {
-            if (node.imports.has(filePath)) dependents.add(importer);
-        }
-        return dependents;
-    }
-
-    getDependencies(filePath) {
-        const node = this.graph.get(filePath);
-        return node ? node.imports : new Set();
-    }
-
-    getReachableFiles(entryPoints) {
-        const reachable = new Set();
-        const queue = [...entryPoints];
         while (queue.length > 0) {
             const currentFile = queue.shift();
-            if (reachable.has(currentFile)) continue;
-            reachable.add(currentFile);
-            const node = this.graph.get(currentFile);
-            if (node) {
-                for (const importedFile of node.imports) {
-                    if (!reachable.has(importedFile)) queue.push(importedFile);
-                }
+            if (visited.has(currentFile)) {
+                continue;
             }
-        }
-        return reachable;
-    }
+            visited.add(currentFile);
+            this.reachableFiles.add(currentFile);
 
-    toDotGraph() {
-        let dot = `digraph G {\n  rankdir=LR;\n  node [shape=box];\n`;
-        for (const [filePath, node] of this.graph.entries()) {
-            const fileName = path.basename(filePath);
-            dot += `  "${filePath}" [label="${fileName}"];\n`;
-            for (const importedFile of node.imports) dot += `  "${filePath}" -> "${importedFile}";\n`;
+            const meta = this.stats.fileSymbolMetadata?.get(currentFile);
+            if (!meta) {
+                continue;
+            }
+
+            meta.imports.forEach(imp => {
+                const targetPath = resolveLocalModulePath(currentFile, imp.source);
+                if (!targetPath) {
+                    return;
+                }
+
+                if (!this.usedSymbolsMap.has(targetPath)) {
+                    this.usedSymbolsMap.set(targetPath, new Set());
+                }
+                const targetUses = this.usedSymbolsMap.get(targetPath);
+
+                imp.specifiers.forEach(spec => {
+                    if (spec.type === 'ImportNamespaceSpecifier') {
+                        const propsAccessed = meta.namespaceUses.get(spec.local);
+                        if (propsAccessed) {
+                            propsAccessed.forEach(p => { return targetUses.add(p); });
+                        } else {
+                            targetUses.add('*');
+                        }
+                    } else {
+                        targetUses.add(spec.imported);
+                    }
+                });
+                if (!visited.has(targetPath)) {
+                    queue.push(targetPath);
+                }
+            });
+
+            meta.reExports.forEach(re => {
+                const targetPath = resolveLocalModulePath(currentFile, re.source);
+                if (!targetPath) {
+                    return;
+                }
+
+                if (!this.usedSymbolsMap.has(targetPath)) {
+                    this.usedSymbolsMap.set(targetPath, new Set());
+                }
+                const targetUses = this.usedSymbolsMap.get(targetPath);
+
+                re.specifiers.forEach(spec => {
+                    targetUses.add(spec.local || spec.exported);
+                });
+                if (!visited.has(targetPath)) {
+                    queue.push(targetPath);
+                }
+            });
         }
-        dot += `}\n`;
-        return dot;
     }
 }
 
 // ============================================================
-// 📊 POST-PROCESSING ANALYSIS ENGINE
+// 📊 POST-PROCESSING ANALYSIS PASS
 // ============================================================
-function postProcessAnalysis(stats, dependencyGraph) {
-    // Fix: Uniquely named block variables to prevent SyntaxError
-    const initialExportedFiles = new Set(Array.from(stats.exportedSymbols.keys()));
-    stats.unusedFiles = new Set(initialExportedFiles);
+/**
+ * Führt nach der Traversierung den Abgleich zwischen deklarierten und ungenutzten Exporten/Dateien durch.
+ * @param {Object} stats Globales Analyseobjekt.
+ * @param {Object} graphEngine Instanz der Graphen-Traversierung.
+ */
+function postProcessAnalysis(stats, graphEngine) {
+    stats.unusedFiles = new Set();
+    stats.unusedExportsPerFile = new Map();
 
-    for (const [importerFilePath, importedSymbols] of stats.localFileImports.entries()) {
-        if (importedSymbols.size > 0) stats.unusedFiles.delete(importerFilePath);
-        for (const [exportedFilePath, exportedSymbolsMap] of stats.exportedSymbols.entries()) {
-            if (importerFilePath === exportedFilePath) continue;
-            for (const importedSymbol of importedSymbols) {
-                if (exportedSymbolsMap.has(importedSymbol)) {
-                    if (!stats.usedExports.has(exportedFilePath)) stats.usedExports.set(exportedFilePath, new Set());
-                    stats.usedExports.get(exportedFilePath).add(importedSymbol);
-                    stats.unusedFiles.delete(exportedFilePath);
-                }
+    stats.scannedFilePaths.forEach(filePath => {
+        if (!graphEngine.reachableFiles.has(filePath)) {
+            stats.unusedFiles.add(filePath);
+        }
+    });
+
+    for (const filePath of graphEngine.reachableFiles) {
+        const meta = stats.fileSymbolMetadata?.get(filePath);
+        if (!meta) {
+            continue;
+        }
+
+        const globalUses = graphEngine.usedSymbolsMap.get(filePath) || new Set();
+        if (globalUses.has('*')) {
+            continue;
+        }
+
+        const unusedSet = new Set();
+        for (const [exportName] of meta.exports.entries()) {
+            if (!globalUses.has(exportName)) {
+                unusedSet.add(exportName);
             }
         }
-    }
-
-    for (const [filePath, exportedSymbolsMap] of stats.exportedSymbols.entries()) {
-        const used = stats.usedExports.get(filePath) || new Set();
-        const unused = new Set();
-        for (const [symbolName] of exportedSymbolsMap.entries()) {
-            if (!used.has(symbolName)) unused.add(symbolName);
-        }
-        if (unused.size > 0) stats.unusedExportsPerFile.set(filePath, unused);
-    }
-
-    const processedFilePathsSet = new Set(stats.scannedFilePaths); // Fix: uses tracked paths instead of total count number
-    const entryPoints = new Set();
-
-    if (stats.packageJson && stats.packageJson.main) entryPoints.add(path.resolve(stats.targetDir, stats.packageJson.main));
-    if (stats.packageJson && stats.packageJson.module) entryPoints.add(path.resolve(stats.targetDir, stats.packageJson.module));
-    if (stats.packageJson && stats.packageJson.type === 'module' && fs.existsSync(path.join(stats.targetDir, 'index.js'))) entryPoints.add(path.resolve(stats.targetDir, 'index.js'));
-    if (stats.packageJson && stats.packageJson.type !== 'module' && fs.existsSync(path.join(stats.targetDir, 'index.cjs'))) entryPoints.add(path.resolve(stats.targetDir, 'index.cjs'));
-
-    if (stats.detectedFrameworks) {
-        if (stats.detectedFrameworks.includes('next')) {
-            stats.frameworkFiles.nextjs.pages.forEach(file => entryPoints.add(file));
-            stats.frameworkFiles.nextjs.apiRoutes.forEach(file => entryPoints.add(file));
-            stats.frameworkFiles.nextjs.components.forEach(file => entryPoints.add(file));
-        }
-        if (stats.detectedFrameworks.includes('nuxt')) {
-            stats.frameworkFiles.nuxt.pages.forEach(file => entryPoints.add(file));
-            stats.frameworkFiles.nuxt.components.forEach(file => entryPoints.add(file));
-        }
-        if (stats.detectedFrameworks.includes('svelte')) {
-            stats.frameworkFiles.sveltekit.pages.forEach(file => entryPoints.add(file));
-            stats.frameworkFiles.sveltekit.endpoints.forEach(file => entryPoints.add(file));
-            stats.frameworkFiles.sveltekit.components.forEach(file => entryPoints.add(file));
-        }
-        if (stats.detectedFrameworks.includes('react')) {
-            stats.frameworkFiles.react.components.forEach(file => entryPoints.add(file));
-            stats.frameworkFiles.react.hooks.forEach(file => entryPoints.add(file));
-        }
-        if (stats.detectedFrameworks.includes('vue')) {
-            stats.frameworkFiles.vue.components.forEach(file => entryPoints.add(file));
-            stats.frameworkFiles.vue.composables.forEach(file => entryPoints.add(file));
+        if (unusedSet.size > 0) {
+            stats.unusedExportsPerFile.set(filePath, unusedSet);
         }
     }
-
-    const reachableFiles = dependencyGraph.getReachableFiles(Array.from(entryPoints));
-    stats.unusedFiles = new Set(Array.from(processedFilePathsSet).filter(file => !reachableFiles.has(file)));
 
     if (stats.detectedFrameworks && stats.detectedFrameworks.includes('tailwind')) {
         const tailwindConfigPath = path.join(stats.targetDir, 'tailwind.config.js');
@@ -1170,11 +1734,12 @@ function postProcessAnalysis(stats, dependencyGraph) {
                 const tailwindContent = fs.readFileSync(tailwindConfigPath, 'utf8');
                 const contentArrayMatch = tailwindContent.match(/content:\s*\[([^\]]+)\]/s);
                 if (contentArrayMatch && contentArrayMatch[1]) {
-                    const globPatterns = contentArrayMatch[1].split(',').map(s => s.trim().replace(/["']/g, ''));
+                    const globPatterns = contentArrayMatch[1].split(',').map(s => { return s.trim().replace(/["']/g, ''); });
+                    if (globPatterns.length > 0) {
+                        console.log(`    ℹ️ Tailwind Context Scan: Registered ${globPatterns.length} content matching globs vectors.`);
+                    }
                 }
-            } catch (e) {
-                console.error(`   ❌ Error parsing tailwind.config.js: ${e.message}`);
-            }
+            } catch (tailwindFileReadException) {}
         }
     }
 }
@@ -1183,12 +1748,11 @@ function postProcessAnalysis(stats, dependencyGraph) {
 // INTERACTIVE ENGINE COMMAND LINE SYSTEM
 // ============================================================
 async function main() {
-    // --- Native Feature: Help CLI Parameter Engine ---
     if (process.argv.includes('--help') || process.argv.includes('-h')) {
-        console.log(`\n📦 pkg-scaffold v2.0: Advanced Dependency Intelligence Engine\n`);
+        console.log(`\n📦 pkg-scaffold v2.2.0: Advanced Dependency Intelligence Engine\n`);
         console.log(`Usage: npx pkg-scaffold [options]\n`);
         console.log(`Options:`);
-        console.log(`  -h, --help     Show this comprehensive workspace helper panel`);
+        console.log(`  -h, --help      Show this comprehensive workspace helper panel`);
         process.exit(0);
     }
 
@@ -1205,14 +1769,24 @@ async function main() {
     let rlClosed = false;
     rl.on('close', () => { rlClosed = true; });
     const safeQuestion = async (prompt) => {
-        if (rlClosed || !process.stdin.readable) return '';
-        try { return await rl.question(prompt); } catch { return ''; }
+        if (rlClosed || !process.stdin.readable) {
+            return '';
+        }
+        try { 
+            return await rl.question(prompt); 
+        } catch (readlineQuestionPromptError) { 
+            return ''; 
+        }
     };
 
     const stats = {
-        tsFiles: 0, jsFiles: 0, usesEsm: false, hasHtml: false, hasTests: false,
+        tsFiles: 0, 
+        jsFiles: 0, 
+        usesEsm: false, 
+        hasHtml: false, 
+        hasTests: false,
         scannedFiles: 0,
-        scannedFilePaths: [], // Fix: storage instance mapped for lifecycle processing
+        scannedFilePaths: [], 
         rawDeps: new Set(),
         allImportedPackages: new Set(),
         envVars: new Set(),
@@ -1227,10 +1801,20 @@ async function main() {
         insecureCodePatterns: [],
         subWorkspaces: [],
         conflictingLockfiles: [],
-        exportedSymbols: new Map(), usedExports: new Map(), unusedFiles: new Set(),
-        unusedExportsPerFile: new Map(), localFileImports: new Map(), unusedDepsInCode: new Set(),
-        unusedImportsPerFile: new Map(), filesWithEnvVars: new Set(), injectDotenvEngine: false, bootstrapEslintSuite: false,
-        ghostDependencies: new Set(), orphanedDependencies: new Set(), deprecatedPackages: new Map(),
+        exportedSymbols: new Map(), 
+        usedExports: new Map(), 
+        unusedFiles: new Set(),
+        unusedExportsPerFile: new Map(), 
+        localFileImports: new Map(), 
+        unusedDepsInCode: new Set(),
+        unusedImportsPerFile: new Map(), 
+        filesWithEnvVars: new Set(), 
+        injectDotenvEngine: false, 
+        bootstrapEslintSuite: false,
+        ghostDependencies: new Set(), 
+        orphanedDependencies: new Set(), 
+        deprecatedPackages: new Map(),
+        fileSymbolMetadata: new Map(),
         frameworkFiles: {
             nextjs: { pages: new Set(), apiRoutes: new Set(), components: new Set(), dataFetching: new Map(), optimizations: [] },
             nuxt: { pages: new Set(), components: new Set(), modules: new Set(), dataFetching: new Map(), optimizations: [] },
@@ -1239,16 +1823,18 @@ async function main() {
             vue: { composables: new Set(), components: new Set(), optimizations: [] },
         },
         frameworkOptimizations: [],
-        packageJson: null, targetDir: targetDir, detectedFrameworks: []
+        packageJson: null, 
+        targetDir: targetDir, 
+        detectedFrameworks: []
     };
 
     const activePkgManager = detectPackageManager(targetDir, stats);
     const pkgPath = path.join(targetDir, 'package.json');
     let preExistingLicense = null, preExistingDeps = [], preExistingDevDeps = [], existingPackageJson = null;
-    let detectedFrameworks = []; // Fix: Lifted out of block scope to resolve ReferenceError
+    let detectedFrameworks = []; 
 
     console.log(`\n${'═'.repeat(67)}`);
-    console.log(`🚀 pkg-scaffold v2.0: Advanced Dependency Intelligence Engine`);
+    console.log(`🚀 pkg-scaffold v2.2.0: Enterprise Graph Intelligence Analyzer`);
     console.log(`${'═'.repeat(67)}\n`);
 
     const topLevelItems = fs.readdirSync(targetDir);
@@ -1263,16 +1849,24 @@ async function main() {
                     for (const entry of subEntries) {
                         const entryPath = path.join(d, entry);
                         if (fs.statSync(entryPath).isDirectory()) {
-                            if (!IGNORED_DIRS.has(entry) && !entry.startsWith('.')) examineDirectory(entryPath);
-                        } else if (VALID_EXTENSIONS.has(path.extname(entry))) containsSourceCode = true;
+                            if (!IGNORED_DIRS.has(entry) && !entry.startsWith('.')) {
+                                examineDirectory(entryPath);
+                            }
+                        } else if (VALID_EXTENSIONS.has(path.extname(entry))) {
+                            containsSourceCode = true;
+                        }
                     }
-                } catch {}
+                } catch (subDirReadError) {}
             };
             examineDirectory(fullPath);
-            if (containsSourceCode) potentialSubModules.push(item);
+            if (containsSourceCode) {
+                potentialSubModules.push(item);
+            }
         }
     }
-    if (potentialSubModules.length > 1) stats.subWorkspaces = potentialSubModules;
+    if (potentialSubModules.length > 1) {
+        stats.subWorkspaces = potentialSubModules;
+    }
 
     if (fs.existsSync(pkgPath)) {
         console.log(`⚠️  An existing package.json was found in this working directory.`);
@@ -1283,35 +1877,44 @@ async function main() {
             if (existingPackageJson.license && typeof existingPackageJson.license === 'string' && existingPackageJson.license.toLowerCase() !== 'none') {
                 preExistingLicense = existingPackageJson.license;
             }
-            if (existingPackageJson.dependencies) preExistingDeps = Object.keys(existingPackageJson.dependencies);
-            if (existingPackageJson.devDependencies) preExistingDevDeps = Object.keys(existingPackageJson.devDependencies);
+            if (existingPackageJson.dependencies) {
+                preExistingDeps = Object.keys(existingPackageJson.dependencies);
+            }
+            if (existingPackageJson.devDependencies) {
+                preExistingDevDeps = Object.keys(existingPackageJson.devDependencies);
+            }
 
             detectedFrameworks = FrameworkEngine.detect(targetDir, existingPackageJson);
             stats.detectedFrameworks = detectedFrameworks;
 
             const combinedDeps = [...preExistingDeps, ...preExistingDevDeps];
-            let brokenEcosystem = combinedDeps.length === 0;
+            let brokenEcosystem = false;
 
             if (combinedDeps.length > 0) {
-                console.log(`   🔍 Validating ${combinedDeps.length} declared package(s) against npm registry...`);
+                console.log(`    🔍 Validating ${combinedDeps.length} declared package(s) against npm registry...`);
                 for (const dep of combinedDeps) {
                     const check = await inspectNpmPackage(dep);
+                    
                     if (check && check.error === 'NOT_FOUND') {
-                        brokenEcosystem = true;
-                        console.log(`   ❌ Non-existent package on registry: "${dep}"`);
+                        if (dep.startsWith('@')) {
+                            console.log(`    ℹ️ Scoped or private module bypassed registry assertion: "${dep}"`);
+                        } else {
+                            brokenEcosystem = true;
+                            console.log(`    ❌ Non-existent package on registry: "${dep}"`);
+                        }
                     } else if (check && check.deprecated) {
                         stats.deprecatedPackages.set(dep, check.deprecated);
-                        console.log(`   ⚠️  Deprecated package detected: "${dep}" — ${check.deprecated}`);
+                        console.log(`    ⚠️  Deprecated package detected: "${dep}" — ${check.deprecated}`);
                     }
                 }
             }
             if (brokenEcosystem) {
-                console.log(`\n🛑 CRITICAL COMPLIANCE BREAK: Your current package.json is empty or contains non-existent packages.`);
+                console.log(`\n🛑 CRITICAL COMPLIANCE BREAK: Your current package.json contains non-existent packages.`);
                 console.log(`👉 Action Required: Please remove or backup the existing 'package.json' from this folder.\n`);
                 rl.close();
                 return;
             }
-        } catch (err) {
+        } catch (packageJsonParseRuntimeError) {
             console.log(`\n🛑 CRITICAL: Existing package.json is malformed or corrupt.\n`);
             rl.close();
             return;
@@ -1320,9 +1923,35 @@ async function main() {
 
     console.log(`\n🔬 Scanning workspace source files...`);
     scanWorkspace(targetDir, stats, folderName, detectedFrameworks);
-    console.log(`   ✅ Scanned ${stats.scannedFiles} source file(s) | TS: ${stats.tsFiles} | JS: ${stats.jsFiles}`);
+    console.log(`    Janitor: Found ${stats.scannedFiles} source module assets.`);
 
-    const dependencyGraph = new DependencyGraph(stats);
+    // --- TRIGGER RE-ARCHITECTED KNIP GRAPH INTELLIGENCE ---
+    const graphEngine = new KnipEcosystemGraph(stats);
+    const initialEntries = new Set();
+    const baseEntryFallbacks = ['index.js', 'index.ts', 'src/index.js', 'src/index.ts', 'main.js', 'src/main.js', 'src/main.ts'];
+    baseEntryFallbacks.forEach(f => {
+        const absolutePath = path.join(targetDir, f);
+        if (fs.existsSync(absolutePath)) {
+            initialEntries.add(absolutePath);
+        }
+    });
+
+    if (existingPackageJson) {
+        if (existingPackageJson.main) {
+            initialEntries.add(path.resolve(targetDir, existingPackageJson.main));
+        }
+        if (existingPackageJson.module) {
+            initialEntries.add(path.resolve(targetDir, existingPackageJson.module));
+        }
+    }
+
+    stats.frameworkFiles.nextjs.pages.forEach(file => { return initialEntries.add(file); });
+    stats.frameworkFiles.nextjs.apiRoutes.forEach(file => { return initialEntries.add(file); });
+    stats.frameworkFiles.nuxt.pages.forEach(file => { return initialEntries.add(file); });
+    stats.frameworkFiles.sveltekit.pages.forEach(file => { return initialEntries.add(file); });
+
+    graphEngine.traceReachability(Array.from(initialEntries));
+    postProcessAnalysis(stats, graphEngine);
 
     const binariesInScripts = existingPackageJson ? getBinariesFromPackageJson(existingPackageJson) : [];
     const resolvedBinaryPackages = new Set();
@@ -1336,7 +1965,9 @@ async function main() {
     if (preExistingDeps.length > 0 || preExistingDevDeps.length > 0) {
         stats.ghostDependencies = detectGhostDependencies(stats.allImportedPackages, preExistingDeps, preExistingDevDeps);
         for (const dep of stats.ghostDependencies) {
-            if (DEV_TOOLING_ECOSYSTEM.has(dep) || dep.startsWith('@types/')) stats.ghostDependencies.delete(dep);
+            if (DEV_TOOLING_ECOSYSTEM.has(dep) || dep.startsWith('@types/')) {
+                stats.ghostDependencies.delete(dep);
+            }
         }
     }
 
@@ -1344,90 +1975,61 @@ async function main() {
         stats.orphanedDependencies = detectOrphanedDependencies(preExistingDeps, stats.allImportedPackages, resolvedBinaryPackages, DEV_TOOLING_ECOSYSTEM);
     }
 
-    const trulyUnusedImports = new Set();
-    for (const pkg of stats.unusedDepsInCode) {
-        let foundUsedElsewhere = false;
-        for (const [, fileUnused] of stats.unusedImportsPerFile.entries()) {
-            if (!fileUnused.has(pkg)) {
-                if (stats.allImportedPackages.has(pkg)) {
-                    foundUsedElsewhere = true;
-                    break;
-                }
-            }
-        }
-        if (!foundUsedElsewhere) trulyUnusedImports.add(pkg);
-    }
-
     if (stats.ghostDependencies.size > 0) {
         console.log(`\n${'─'.repeat(67)}`);
         console.log(`🚨 GHOST DEPENDENCIES DETECTED (CRITICAL — Runtime/Deploy will FAIL)`);
         console.log(`${'─'.repeat(67)}`);
-        console.log(`   These packages are USED in your code but NOT listed in package.json.`);
-        console.log(`   They may work locally (if globally installed) but WILL FAIL in CI/CD.\n`);
-        for (const pkg of stats.ghostDependencies) console.log(`   ❌ \x1b[31m"${pkg}"\x1b[0m — imported in code, missing from package.json`);
+        console.log(`    Diese Pakete fehlen in deiner package.json, werden aber aktiv importiert:\n`);
+        for (const pkg of stats.ghostDependencies) {
+            console.log(`    ❌ \x1b[31m"${pkg}"\x1b[0m — missing from package.json`);
+        }
         console.log(`${'─'.repeat(67)}`);
         const addGhosts = await safeQuestion(`❓ Add these missing packages to package.json automatically? (Y/n): `);
         if (addGhosts.trim().toLowerCase() !== 'n' && addGhosts.trim().toLowerCase() !== 'no') {
-            for (const pkg of stats.ghostDependencies) stats.rawDeps.add(pkg);
-            console.log(`   ✅ Ghost dependencies queued for package.json registration.`);
+            for (const pkg of stats.ghostDependencies) {
+                stats.rawDeps.add(pkg);
+            }
+            console.log(`    ✅ Ghost dependencies queued for package.json registration.`);
         }
+    }
+
+    if (stats.unusedFiles.size > 0) {
+        console.log(`\n${'─'.repeat(67)}`);
+        console.log(`🗑️  DEAD CODE FILES DETECTED (Unreachable from Entrypoints)`);
+        console.log(`${'─'.repeat(67)}`);
+        stats.unusedFiles.forEach(f => {
+            console.log(`    💀 \x1b[31m"${path.relative(targetDir, f)}"\x1b[0m — file never mapped or imported.`);
+        });
+        console.log(`${'─'.repeat(67)}`);
+    }
+
+    if (stats.unusedExportsPerFile.size > 0) {
+        console.log(`\n${'─'.repeat(67)}`);
+        console.log(`📤 UNUSED EXPORTS DETECTED (Dead Public API Symbols)`);
+        console.log(`${'─'.repeat(67)}`);
+        for (const [file, symbols] of stats.unusedExportsPerFile.entries()) {
+            console.log(`    ⚡ \x1b[33m"${path.relative(targetDir, file)}"\x1b[0m -> Dead Token(s): [ ${Array.from(symbols).join(', ')} ]`);
+        }
+        console.log(`${'─'.repeat(67)}`);
     }
 
     if (stats.orphanedDependencies.size > 0) {
         console.log(`\n${'─'.repeat(67)}`);
         console.log(`📦 ORPHANED DEPENDENCIES DETECTED (in package.json, never imported)`);
         console.log(`${'─'.repeat(67)}`);
-        console.log(`   These packages are declared in package.json but never imported`);
-        console.log(`   anywhere in your source code. Safe to remove.\n`);
-        for (const pkg of stats.orphanedDependencies) console.log(`   🗑️  \x1b[33m"${pkg}"\x1b[0m — declared but never imported`);
+        for (const pkg of stats.orphanedDependencies) {
+            console.log(`    🗑️  \x1b[33m"${pkg}"\x1b[0m — declared but never imported`);
+        }
         console.log(`${'─'.repeat(67)}`);
         const pruneOrphans = await safeQuestion(`❓ Remove these orphaned packages from package.json? (y/N): `);
         if (pruneOrphans.trim().toLowerCase() === 'y' || pruneOrphans.trim().toLowerCase() === 'yes') {
             if (existingPackageJson) {
-                for (const pkg of stats.orphanedDependencies) delete existingPackageJson.dependencies?.[pkg];
-                fs.writeFileSync(pkgPath, JSON.stringify(existingPackageJson, null, 2));
-                console.log(`   🗑️  Orphaned dependencies removed from package.json.`);
-            }
-        }
-    }
-
-    const allDiscoveredUnused = new Set([...trulyUnusedImports]);
-    if (preExistingDeps.length > 0) {
-        preExistingDeps.forEach(dep => {
-            if (!stats.rawDeps.has(dep) && !DEV_TOOLING_ECOSYSTEM.has(dep) && !dep.startsWith('@types/')) allDiscoveredUnused.add(dep);
-        });
-    }
-    for (const dep of allDiscoveredUnused) {
-        if (DEV_TOOLING_ECOSYSTEM.has(dep) || dep.startsWith('@types/')) allDiscoveredUnused.delete(dep);
-    }
-
-    if (allDiscoveredUnused.size > 0) {
-        console.log(`\n${'─'.repeat(67)}`);
-        console.log(`⚠️  UNUSED IMPORTS DETECTED (imported but never referenced in code)`);
-        console.log(`${'─'.repeat(67)}`);
-        console.log(`   These modules are imported but their identifiers are never used`);
-        console.log(`   in executable code paths.\n`);
-
-        for (const dep of allDiscoveredUnused) {
-            const filesWithUnused = [];
-            for (const [filePath, fileUnused] of stats.unusedImportsPerFile.entries()) {
-                if (fileUnused.has(dep)) {
-                    const lines = fileUnused.get(dep);
-                    const lineStr = lines.length > 0 ? `:${lines[0]}` : '';
-                    filesWithUnused.push(`${path.relative(targetDir, filePath)}${lineStr}`);
+                for (const pkg of stats.orphanedDependencies) {
+                    delete existingPackageJson.dependencies?.[pkg];
                 }
+                fs.writeFileSync(pkgPath, JSON.stringify(existingPackageJson, null, 2));
+                console.log(`    🗑️  Orphaned dependencies removed from package.json.`);
             }
-            if (filesWithUnused.length > 0) {
-                console.log(`   ⚡ \x1b[33m"${dep}"\x1b[0m`);
-                filesWithUnused.forEach(f => console.log(`      └─ ${f}`));
-            } else console.log(`   ⚡ \x1b[33m"${dep}"\x1b[0m`);
-        }
-        console.log(`${'─'.repeat(67)}`);
-
-        const pruneChoice = await safeQuestion(`❓ Exclude these unused imports from your package.json setup? (y/N): `);
-        if (pruneChoice.trim().toLowerCase() === 'y' || pruneChoice.trim().toLowerCase() === 'yes') {
-            for (const deadDep of allDiscoveredUnused) stats.rawDeps.delete(deadDep);
-            console.log(`   🗑️  Pruned unused imports from configuration blueprint.`);
         }
     }
 
@@ -1435,7 +2037,10 @@ async function main() {
         console.log(`\n${'─'.repeat(67)}`);
         console.log(`⚠️  DEPRECATED PACKAGES DETECTED`);
         console.log(`${'─'.repeat(67)}`);
-        for (const [pkg, msg] of stats.deprecatedPackages.entries()) console.log(`   📛 \x1b[33m"${pkg}"\x1b[0m — ${msg}`);
+        for (const [pkg, msg] of stats.deprecatedPackages.entries()) {
+            // FIX: Behebt das fehlerhafte Ersetzungstoken "Badge" durch das vorgesehene Warnungs-Emoji Layout
+            console.log(`    📛 \x1b[33m"${pkg}"\x1b[0m — ${msg}`);
+        }
         console.log(`${'─'.repeat(67)}`);
     }
 
@@ -1446,8 +2051,9 @@ async function main() {
             for (const file of fs.readdirSync(dir)) {
                 const fullPath = path.join(dir, file);
                 const stat = fs.statSync(fullPath);
-                if (stat.isDirectory() && !IGNORED_DIRS.has(file) && !file.startsWith('.')) collectExecutionContent(fullPath);
-                else if (VALID_EXTENSIONS.has(path.extname(file))) {
+                if (stat.isDirectory() && !IGNORED_DIRS.has(file) && !file.startsWith('.')) {
+                    collectExecutionContent(fullPath);
+                } else if (VALID_EXTENSIONS.has(path.extname(file))) {
                     try {
                         const content = readFileSyncNormalized(fullPath);
                         const execCode = content.split(/\r?\n/).filter(l => {
@@ -1455,10 +2061,10 @@ async function main() {
                             return !t.startsWith('import ') && !/\brequire\s*\(/.test(t);
                         }).join('\n');
                         phantomScanContent.set(fullPath, execCode);
-                    } catch {}
+                    } catch (readExecContentError) {}
                 }
             }
-        } catch {}
+        } catch (fsCollectExecError) {}
     }
     collectExecutionContent(targetDir);
 
@@ -1467,7 +2073,9 @@ async function main() {
             const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             if (new RegExp(`\\b${escaped}\\b`).test(execCode) && !stats.allImportedPackages.has(token)) {
                 stats.rawDeps.add(token);
-                if (!stats.phantomInjections.has(filePath)) stats.phantomInjections.set(filePath, new Set());
+                if (!stats.phantomInjections.has(filePath)) {
+                    stats.phantomInjections.set(filePath, new Set());
+                }
                 stats.phantomInjections.get(filePath).add(token);
             }
         }
@@ -1496,7 +2104,8 @@ async function main() {
         author: gitInfo.author || undefined,
         repository: gitInfo.repository ? { type: "git", url: `git+${gitInfo.repository}.git` } : undefined,
         scripts: { test: stats.hasTests ? (isFrontendWeb ? 'vitest' : 'jest') : 'echo "No workspace test vectors specified" && exit 0' },
-        dependencies: {}, devDependencies: {}
+        dependencies: {}, 
+        devDependencies: {}
     };
 
     const eslintConfigFile = path.join(targetDir, 'eslint.config.js');
@@ -1511,8 +2120,11 @@ async function main() {
         if (choiceLintSetup.trim().toLowerCase() !== 'n' && choiceLintSetup.trim().toLowerCase() !== 'no') {
             stats.bootstrapEslintSuite = true;
             stats.rawDeps.add('eslint');
-            if (isTypeScript) stats.rawDeps.add('typescript-eslint');
-            else stats.rawDeps.add('@eslint/js');
+            if (isTypeScript) {
+                stats.rawDeps.add('typescript-eslint');
+            } else {
+                stats.rawDeps.add('@eslint/js');
+            }
         }
     }
 
@@ -1521,18 +2133,24 @@ async function main() {
         packageJson.scripts.build = 'vite build';
         packageJson.scripts.preview = 'vite preview';
         stats.rawDeps.add('vite');
-        if (stats.hasTests) stats.rawDeps.add('vitest');
+        if (stats.hasTests) {
+            stats.rawDeps.add('vitest');
+        }
     } else {
         if (isTypeScript) {
             packageJson.scripts.build = 'tsc';
             packageJson.scripts.start = 'node dist/index.js';
             packageJson.scripts.dev = 'node --watch dist/index.js';
-        } else packageJson.scripts.start = 'node index.js';
+        } else {
+            packageJson.scripts.start = 'node index.js';
+        }
     }
 
     if (isTypeScript) {
         packageJson.devDependencies.typescript = '^5.4.0';
-        if (!isFrontendWeb) packageJson.devDependencies['@types/node'] = '^20.11.0';
+        if (!isFrontendWeb) {
+            packageJson.devDependencies['@types/node'] = '^20.11.0';
+        }
     }
 
     if (stats.rawDeps.size > 0) {
@@ -1544,8 +2162,11 @@ async function main() {
                 if (check && check.error !== 'NOT_FOUND') {
                     const version = check.version || 'latest';
                     const isDevDep = ['vite', 'vitest', 'typescript', 'eslint', 'typescript-eslint', '@eslint/js', 'prettier', 'jest', 'nodemon', 'ts-node', 'tsup', 'esbuild', '@swc/cli', 'tsx', 'rimraf', 'copyfiles', 'mkdirp', 'husky', 'lint-staged', '@commitlint/cli', 'typedoc', 'c8', 'nyc', 'mocha', 'ava', 'tap', 'jasmine', 'storybook', 'turbo', 'nx', 'biome', '@biomejs/biome', 'oxlint', 'xo', 'standard'].includes(cleaned) || cleaned.startsWith('@types/');
-                    if (isDevDep) packageJson.devDependencies[cleaned] = `^${version}`;
-                    else packageJson.dependencies[cleaned] = `^${version}`;
+                    if (isDevDep) {
+                        packageJson.devDependencies[cleaned] = `^${version}`;
+                    } else {
+                        packageJson.dependencies[cleaned] = `^${version}`;
+                    }
                     console.log(`   ✔ Synced: ${cleaned}@^${version}${check.deprecated ? ' \x1b[33m[DEPRECATED]\x1b[0m' : ''}`);
                 }
             }
@@ -1558,7 +2179,7 @@ async function main() {
         console.log(`${'─'.repeat(67)}`);
         for (const [filePath, missingModules] of stats.phantomInjections.entries()) {
             console.log(`📂 File: ${path.relative(targetDir, filePath)}`);
-            console.log(`   ❌ Used but never imported: ${Array.from(missingModules).map(m => `"${m}"`).join(', ')}`);
+            console.log(`   ❌ Used but never imported: ${Array.from(missingModules).map(m => { return `"${m}"`; }).join(', ')}`);
         }
         console.log(`${'─'.repeat(67)}`);
     }
@@ -1566,9 +2187,15 @@ async function main() {
     if (stats.quality.varCount > 0 || stats.quality.hasEval || stats.quality.syncFsCount > 0) {
         console.log(`\n⚠️  CODE ARCHITECTURE & MODERNIZATION COMPLIANCE WARNINGS:`);
         console.log(`${'─'.repeat(67)}`);
-        if (stats.quality.varCount > 0) console.log(`   ⚡ Found ${stats.quality.varCount} instances of legacy 'var'. Transition to 'let' / 'const'.`);
-        if (stats.quality.hasEval) console.log(`   🔥 DANGER: 'eval()' detected! Refactor to mitigate remote code execution vectors.`);
-        if (stats.quality.syncFsCount > 0) console.log(`   📉 Performance: Found ${stats.quality.syncFsCount} synchronous fs calls. Transition to 'fs/promises'.`);
+        if (stats.quality.varCount > 0) {
+            console.log(`   ⚡ Found ${stats.quality.varCount} instances of legacy 'var'. Transition to 'let' / 'const'.`);
+        }
+        if (stats.quality.hasEval) {
+            console.log(`   🔥 DANGER: 'eval()' detected! Refactor to mitigate remote code execution vectors.`);
+        }
+        if (stats.quality.syncFsCount > 0) {
+            console.log(`   📉 Performance: Found ${stats.quality.syncFsCount} synchronous fs calls. Transition to 'fs/promises'.`);
+        }
         console.log(`${'─'.repeat(67)}`);
     }
 
@@ -1592,7 +2219,9 @@ async function main() {
                 const exactLiteralPattern = new RegExp(`\\b${secretMeta.keyName}\\s*=\\s*['"\\ ]${secretMeta.secretValue.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}['"\\ ]`, 'g');
                 currentCodeContent = currentCodeContent.replace(exactLiteralPattern, `${secretMeta.keyName} = ${envAccessor}`);
                 fs.writeFileSync(secretMeta.filePath, currentCodeContent);
-                if (!envBuffer.includes(`${secretMeta.envVarName}=`)) envBuffer += `${secretMeta.envVarName}=${secretMeta.secretValue}\n`;
+                if (!envBuffer.includes(`${secretMeta.envVarName}=`)) {
+                    envBuffer += `${secretMeta.envVarName}=${secretMeta.secretValue}\n`;
+                }
                 console.log(`   🔒 Isolated: ${secretMeta.keyName} → ${envAccessor}`);
             }
             fs.writeFileSync(envPath, envBuffer);
@@ -1601,11 +2230,11 @@ async function main() {
 
     if (stats.subWorkspaces && stats.subWorkspaces.length > 1) {
         console.log(`\n📂 MULTI-WORKSPACE SEGMENTATION DETECTED`);
-        console.log(`   Identified sub-module paths: ${stats.subWorkspaces.map(w => `/${w}`).join(', ')}`);
+        console.log(`   Identified sub-module paths: ${stats.subWorkspaces.map(w => { return `/${w}`; }).join(', ')}`);
         const setupWorkspace = await safeQuestion(`❓ Setup as a multi-package Monorepo Workspace layout? (y/N): `);
         if (setupWorkspace.trim().toLowerCase() === 'y' || setupWorkspace.trim().toLowerCase() === 'yes') {
             if (activePkgManager === 'pnpm') {
-                fs.writeFileSync(path.join(targetDir, 'pnpm-workspace.yaml'), `packages:\n${stats.subWorkspaces.map(w => `  - '${w}'`).join('\n')}\n`);
+                fs.writeFileSync(path.join(targetDir, 'pnpm-workspace.yaml'), `packages:\n${stats.subWorkspaces.map(w => { return `  - '${w}'`; }).join('\n')}\n`);
                 console.log(`   🏗️  Generated: pnpm-workspace.yaml`);
             } else {
                 packageJson.workspaces = stats.subWorkspaces;
@@ -1629,7 +2258,9 @@ async function main() {
                 fs.writeFileSync(licensePath, parsedText);
                 chosenLicenseType = cleanedInput.toUpperCase();
                 console.log(`   ⚖️  Provisioned: LICENSE`);
-            } else chosenLicenseType = cleanedInput;
+            } else {
+                chosenLicenseType = cleanedInput;
+            }
             packageJson.license = chosenLicenseType;
         }
     } else {
@@ -1645,10 +2276,14 @@ async function main() {
         } else if (fs.existsSync(licensePath)) {
             try {
                 const currentLicenseContent = fs.readFileSync(licensePath, 'utf8');
-                if (currentLicenseContent.includes('MIT')) chosenLicenseType = 'MIT';
-                else if (currentLicenseContent.includes('Apache')) chosenLicenseType = 'Apache-2.0';
-                else chosenLicenseType = 'Custom';
-            } catch (e) {}
+                if (currentLicenseContent.includes('MIT')) {
+                    chosenLicenseType = 'MIT';
+                } else if (currentLicenseContent.includes('Apache')) {
+                    chosenLicenseType = 'Apache-2.0';
+                } else {
+                    chosenLicenseType = 'Custom';
+                }
+            } catch (licenseFileReadSyncError) {}
         }
         packageJson.license = chosenLicenseType;
     }
@@ -1665,7 +2300,7 @@ async function main() {
             fs.writeFileSync(testFilePath, testTemplate);
             packageJson.scripts.test = 'node --test';
             stats.hasTests = true;
-            console.log(`   🧪 Generated: index${testExt}`);
+            console.log(`    🧪 Generated: index${testExt}`);
         }
     }
 
@@ -1684,7 +2319,7 @@ async function main() {
             }
         }
         fs.writeFileSync(eslintConfigFile, eslintConfigContent);
-        console.log(`   🎨 Provisioned: eslint.config.js`);
+        console.log(`    🎨 Provisioned: eslint.config.js`);
     }
 
     if (fs.existsSync(pkgPath)) {
@@ -1697,11 +2332,11 @@ async function main() {
                 currentPackageJson.scripts.lint = packageJson.scripts.lint;
             }
             fs.writeFileSync(pkgPath, JSON.stringify(currentPackageJson, null, 2));
-            console.log(`   🔄 Safely merged discovered dependencies into existing package.json`);
-        } catch (e) {}
+            console.log(`    🔄 Safely merged discovered dependencies into existing package.json`);
+        } catch (mergePackageJsonError) {}
     } else {
         fs.writeFileSync(pkgPath, JSON.stringify(packageJson, null, 2));
-        console.log(`   📝 Generated: package.json`);
+        console.log(`    📝 Generated: package.json`);
     }
 
     const prettierPath = path.join(targetDir, '.prettierrc');
@@ -1710,21 +2345,21 @@ async function main() {
         const useSemi = stats.style.semiCount >= stats.style.noSemiCount;
         const tabWidth = stats.style.space4Count > stats.style.space2Count ? 4 : 2;
         fs.writeFileSync(prettierPath, JSON.stringify({ semi: useSemi, useTabs, tabWidth, singleQuote: true, trailingComma: "es5" }, null, 2));
-        console.log(`   🎨 Code formatting mirror locked: .prettierrc`);
+        console.log(`    🎨 Code formatting mirror locked: .prettierrc`);
     }
 
     if (stats.envVars.size > 0) {
         const envExamplePath = path.join(targetDir, '.env.example');
         if (!fs.existsSync(envExamplePath)) {
-            fs.writeFileSync(envExamplePath, Array.from(stats.envVars).map(v => `${v}=`).join('\n') + '\n');
-            console.log(`   🔒 Extracted environmental configurations: .env.example`);
+            fs.writeFileSync(envExamplePath, Array.from(stats.envVars).map(v => { return `${v}=`; }).join('\n') + '\n');
+            console.log(`    🔒 Extracted environmental configurations: .env.example`);
         }
     }
 
     const gitignorePath = path.join(targetDir, '.gitignore');
     if (!fs.existsSync(gitignorePath)) {
         fs.writeFileSync(gitignorePath, `node_modules/\ndist/\nbuild/\n.env\n.env.local\n.DS_Store\n*.log\n`);
-        console.log(`   ⚙️  Generated: .gitignore`);
+        console.log(`    ⚙️  Generated: .gitignore`);
     }
 
     if (isTypeScript) {
@@ -1734,7 +2369,7 @@ async function main() {
                 compilerOptions: { target: "ES2022", module: "NodeNext", moduleResolution: "NodeNext", esModuleInterop: true, strict: true, skipLibCheck: true, outDir: "./dist" },
                 include: ["src/**/*", "**/*.ts"]
             }, null, 2));
-            console.log(`   ⚙️  Generated: tsconfig.json`);
+            console.log(`    ⚙️  Generated: tsconfig.json`);
         }
     }
 
@@ -1742,13 +2377,13 @@ async function main() {
     if (!fs.existsSync(readmePath)) {
         const pName = packageJson.name;
         const layoutTree = buildAsciiTree(targetDir).join('\n');
-        const displayDeps = Object.keys(packageJson.dependencies).map(d => `* \`${d}\``).join('\n') || '* None extracted';
-        const displayDevDeps = Object.keys(packageJson.devDependencies).map(d => `* \`${d}\``).join('\n') || '* None extracted';
+        const displayDeps = Object.keys(packageJson.dependencies).map(d => { return `* \`${d}\``; }).join('\n') || '* None extracted';
+        const displayDevDeps = Object.keys(packageJson.devDependencies).map(d => { return `* \`${d}\``; }).join('\n') || '* None extracted';
         const licenseBadgeParam = encodeURIComponent(chosenLicenseType.replace(/-/g, '_'));
 
         const documentationTemplate = `# ${pName}\n\n![Workspace Engine](https://img.shields.io/badge/engine-node-${packageJson.type === 'module' ? 'green' : 'blue'}?style=flat)\n![License Architecture](https://img.shields.io/badge/license-${licenseBadgeParam}-orange?style=flat)\n![Development Tooling](https://img.shields.io/badge/compiled_via-${isTypeScript ? 'typescript' : 'javascript'}-blueviolet?style=flat)\n\n${packageJson.description}\n\n## Workspace Dependency Landscapes\n\n### Core Infrastructure Runtimes (\`dependencies\`)\n${displayDeps}\n\n### System Tooling Engines (\`devDependencies\`)\n${displayDevDeps}\n\n---\n\n## Project Architecture Layout\n\`\`\`text\n${layoutTree}\n\`\`\`\n\n## Installation\n\n\`\`\`bash\n${activePkgManager} install\n\`\`\`\n`;
         fs.writeFileSync(readmePath, documentationTemplate);
-        console.log(`   📖 Generated: README.md`);
+        console.log(`    📖 Generated: README.md`);
     }
 
     if (stats.phantomInjections.size > 0 || (stats.injectDotenvEngine && stats.filesWithEnvVars.size > 0)) {
@@ -1764,24 +2399,30 @@ async function main() {
                 const missingModules = stats.phantomInjections.get(filePath);
                 if (missingModules) {
                     for (const mod of missingModules) {
-                        if (packageJson.type === 'module') declarationBlock += `import ${mod} from '${mod}';\n`;
-                        else declarationBlock += `const ${mod} = require('${mod}');\n`;
+                        if (packageJson.type === 'module') {
+                            declarationBlock += `import ${mod} from '${mod}';\n`;
+                        } else {
+                            declarationBlock += `const ${mod} = require('${mod}');\n`;
+                        }
                     }
                 }
                 if (stats.injectDotenvEngine && stats.filesWithEnvVars.has(filePath) && !originalCode.includes('dotenv')) {
-                    if (packageJson.type === 'module') declarationBlock += `import 'dotenv/config';\n`;
-                    else declarationBlock += `require('dotenv').config();\n`;
+                    if (packageJson.type === 'module') {
+                        declarationBlock += `import 'dotenv/config';\n`;
+                    } else {
+                        declarationBlock += `require('dotenv').config();\n`;
+                    }
                 }
                 if (declarationBlock !== '') {
                     fs.writeFileSync(filePath, smartPrepend(originalCode, declarationBlock));
-                    console.log(`   ⚡ Injected headers: ${path.relative(targetDir, filePath)}`);
+                    console.log(`    ⚡ Injected headers: ${path.relative(targetDir, filePath)}`);
                 }
             }
         }
     }
 
     console.log(`\n🛑 INITIALIZING LIVE ECOSYSTEM DEPRECATION SECURITY SCAN...`);
-    console.log(`   Running integrated npm-deprecated-check validation:\n`);
+    console.log(`    Running integrated npm-deprecated-check validation:\n`);
     try {
         const localRequire = createRequire(import.meta.url);
         const dependencyPkgJsonPath = localRequire.resolve('npm-deprecated-check/package.json');
@@ -1789,7 +2430,7 @@ async function main() {
         const binRelativeMapping = typeof dependencyPkgJson.bin === 'string' ? dependencyPkgJson.bin : (dependencyPkgJson.bin['npm-deprecated-check'] || dependencyPkgJson.bin['ndc']);
         const absoluteExecutablePath = path.join(path.dirname(dependencyPkgJsonPath), binRelativeMapping);
         execSync(`node "${absoluteExecutablePath}" current`, { stdio: 'inherit', cwd: targetDir });
-    } catch (err) {}
+    } catch (deprecationBinaryRunError) {}
 
     if (stats.conflictingLockfiles.length > 1) {
         console.log(`\n⚠️  CONFLICTING LOCKFILES DETECTED: [${stats.conflictingLockfiles.join(', ')}]`);
@@ -1801,8 +2442,8 @@ async function main() {
                 if (lockfile !== operationalLockfile) {
                     try {
                         fs.unlinkSync(path.join(targetDir, lockfile));
-                        console.log(`   🗑️  Cleaned: ${lockfile}`);
-                    } catch (e) {}
+                        console.log(`    🗑  Cleaned: ${lockfile}`);
+                    } catch (lockFileUnlinkError) {}
                 }
             }
         }
@@ -1810,26 +2451,59 @@ async function main() {
 
     console.log(`\n📦 Auto-scaffolding pipeline complete!`);
 
-    postProcessAnalysis(stats, dependencyGraph);
+    if (stats.frameworkOptimizations.length > 0) {
+        console.log(`\n🧩 FRAMEWORK ARCHITECTURE OPTIMIZATIONS:`);
+        console.log('─'.repeat(67));
+        for (const optimization of stats.frameworkOptimizations) {
+            console.log(`    💡 ${optimization}`);
+        }
+        console.log('─'.repeat(67));
+    }
+
     console.log(`\n${'═'.repeat(67)}`);
     console.log(`📊 DEPENDENCY INTELLIGENCE SUMMARY`);
     console.log(`${'═'.repeat(67)}`);
-    console.log(`   📁 Files scanned:           ${stats.scannedFiles}`);
-    console.log(`   📦 Packages imported:        ${stats.allImportedPackages.size}`);
-    if (stats.ghostDependencies.size > 0) console.log(`   🚨 Ghost deps (missing):     ${stats.ghostDependencies.size} — \x1b[31mCRITICAL\x1b[0m`);
-    if (stats.orphanedDependencies.size > 0) console.log(`   🗑️  Orphaned deps (unused):   ${stats.orphanedDependencies.size}`);
-    if (allDiscoveredUnused.size > 0) console.log(`   ⚡ Unused imports:           ${allDiscoveredUnused.size}`);
-    if (stats.unusedExportsPerFile.size > 0) console.log(`   📤 Unused exports:           ${Array.from(stats.unusedExportsPerFile.values()).reduce((acc, val) => acc + val.size, 0)} in ${stats.unusedExportsPerFile.size} files`);
-    if (stats.unusedFiles.size > 0) console.log(`   🗑️  Unused files:             ${stats.unusedFiles.size}`);
-    if (stats.deprecatedPackages.size > 0) console.log(`   📛 Deprecated packages:      ${stats.deprecatedPackages.size}`);
-    if (stats.phantomInjections.size > 0) console.log(`   👻 Phantom injections:       ${stats.phantomInjections.size} file(s)`);
-    if (stats.discoveredSecrets.length > 0) console.log(`   🔐 Hardcoded secrets:        ${stats.discoveredSecrets.length} — \x1b[31mSECURITY RISK\x1b[0m`);
-    if (stats.quality.insecureCryptoUsage.length > 0) console.log(`   🚫 Insecure Crypto:          ${stats.quality.insecureCryptoUsage.length} — \x1b[31mSECURITY RISK\x1b[0m`);
-    if (stats.quality.sqlInjectionVulnerabilities.length > 0) console.log(`   💉 SQL Injection:            ${stats.quality.sqlInjectionVulnerabilities.length} — \x1b[31mSECURITY RISK\x1b[0m`);
-    if (stats.quality.xssVulnerabilities.length > 0) console.log(`   🌐 XSS Vulnerabilities:      ${stats.quality.xssVulnerabilities.length} — \x1b[31mSECURITY RISK\x1b[0m`);
-    if (stats.quality.largeImageImports.length > 0) console.log(`   🖼️  Large Image Imports:      ${stats.quality.largeImageImports.length} — \x1b[33mPERFORMANCE WARNING\x1b[0m`);
-    if (stats.quality.unoptimizedLoops.length > 0) console.log(`   🐌 Unoptimized Loops:        ${stats.quality.unoptimizedLoops.length} — \x1b[33mPERFORMANCE WARNING\x1b[0m`);
-    if (stats.quality.frameworkSpecificIssues.length > 0) console.log(`   🧩 Framework Issues:         ${stats.quality.frameworkSpecificIssues.length} — \x1b[33mFRAMEWORK OPTIMIZATION\x1b[0m`);
+    console.log(`    📁 Files scanned:            ${stats.scannedFiles}`);
+    console.log(`    📦 Packages imported:         ${stats.allImportedPackages.size}`);
+    if (stats.ghostDependencies.size > 0) {
+        console.log(`    🚨 Ghost deps (missing):     ${stats.ghostDependencies.size} — \x1b[31mCRITICAL\x1b[0m`);
+    }
+    if (stats.orphanedDependencies.size > 0) {
+        console.log(`    🗑️  Orphaned deps (unused):   ${stats.orphanedDependencies.size}`);
+    }
+    if (stats.unusedExportsPerFile.size > 0) {
+        console.log(`    📤 Unused public symbols:   ${Array.from(stats.unusedExportsPerFile.values()).reduce((acc, val) => { return acc + val.size; }, 0)} tokens`);
+    }
+    if (stats.unusedFiles.size > 0) {
+        console.log(`    🗑️  Unused dead files:       ${stats.unusedFiles.size} files`);
+    }
+    if (stats.deprecatedPackages.size > 0) {
+        console.log(`    ` + `📛 Deprecated packages:      ${stats.deprecatedPackages.size}`);
+    }
+    if (stats.phantomInjections.size > 0) {
+        console.log(`    👻 Phantom injections:       ${stats.phantomInjections.size} file(s)`);
+    }
+    if (stats.discoveredSecrets.length > 0) {
+        console.log(`    🔐 Hardcoded secrets:        ${stats.discoveredSecrets.length} — \x1b[31mSECURITY RISK\x1b[0m`);
+    }
+    if (stats.quality.insecureCryptoUsage.length > 0) {
+        console.log(`    🚫 Insecure Crypto:          ${stats.quality.insecureCryptoUsage.length} — \x1b[31mSECURITY RISK\x1b[0m`);
+    }
+    if (stats.quality.sqlInjectionVulnerabilities.length > 0) {
+        console.log(`    💉 SQL Injection:            ${stats.quality.sqlInjectionVulnerabilities.length} — \x1b[31mSECURITY RISK\x1b[0m`);
+    }
+    if (stats.quality.xssVulnerabilities.length > 0) {
+        console.log(`    🌐 XSS Vulnerabilities:      ${stats.quality.xssVulnerabilities.length} — \x1b[31mSECURITY RISK\x1b[0m`);
+    }
+    if (stats.quality.insecurePatterns.length > 0) {
+        console.log(`    🌐 Insecure DOM Patterns:     ${stats.quality.insecurePatterns.length} — \x1b[31mSECURITY RISK\x1b[0m`);
+    }
+    if (stats.quality.largeImageImports.length > 0) {
+        console.log(`    🖼️  Large Image Imports:      ${stats.quality.largeImageImports.length} — \x1b[33mPERFORMANCE WARNING\x1b[0m`);
+    }
+    if (stats.quality.unoptimizedLoops.length > 0) {
+        console.log(`    🐌 Unoptimized Loops:         ${stats.quality.unoptimizedLoops.length} — \x1b[33mPERFORMANCE WARNING\x1b[0m`);
+    }
     console.log(`${'═'.repeat(67)}`);
 
     const templateManager = new TemplateManager(targetDir, safeQuestion);
@@ -1837,14 +2511,16 @@ async function main() {
 
     if (availableTemplates.length > 0) {
         console.log(`\n🧩 \x1b[1mCustom Templating Engine Detected:\x1b[0m`);
-        console.log(`   Available templates: ${availableTemplates.join(", ")}`);
+        console.log(`    Available templates: ${availableTemplates.join(", ")}`);
         const useTemplate = await safeQuestion(`❓ Do you want to generate code from a template? (y/N): `);
         if (useTemplate.toLowerCase() === 'y') {
             const chosenTemplate = await safeQuestion(`❓ Enter template name: `);
             if (availableTemplates.includes(chosenTemplate)) {
                 const templateVars = await templateManager.promptForVariables(chosenTemplate);
                 await templateManager.generate(chosenTemplate, templateVars);
-            } else console.log(`   ⚠️  Template '${chosenTemplate}' not found.`);
+            } else {
+                console.log(`    ⚠️  Template '${chosenTemplate}' not found.`);
+            }
         }
     }
 
@@ -1857,10 +2533,12 @@ async function main() {
         try {
             execSync(`${activePkgManager} install`, { stdio: 'inherit', cwd: targetDir });
             console.log(`\n🎉 Project fully mapped, configured, and installed successfully!`);
-        } catch (err) {
+        } catch (installProcessRuntimeError) {
             console.error(`\n❌ Installation returned an issue. Please run "${activePkgManager} install" manually.`);
         }
-    } else console.log(`\n▶️  Skipping install. Run "${activePkgManager} install" manually when ready.`);
+    } else {
+        console.log(`\n▶️  Skipping install. Run "${activePkgManager} install" manually when ready.`);
+    }
 }
 
 main();
