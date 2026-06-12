@@ -1,11 +1,14 @@
 {
   "name": "pkg-scaffold",
-  "version": "1.0.0",
+  "version": "1.1.1",
   "description": "Zero-config workspace initializer that scans your source code, generates modern configuration layers, corrects missing imports, and automatically audits legacy dependencies.",
   "type": "module",
   "main": "index.js",
   "bin": {
     "pkg-scaffold": "./index.js"
+  },
+  "scripts": {
+    "postpublish": "git add . && git commit -m \"chore: auto-sync version bump and workspace configuration layers\" && git pull origin main --rebase && git push origin main"
   },
   "keywords": [
     "scaffold",
@@ -19,15 +22,9 @@
   ],
   "author": "DreamLongYT",
   "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/DreamLongYT/pkg-scaffold.git"
-  },
-  "bugs": {
-    "url": "https://github.com/DreamLongYT/pkg-scaffold/issues"
-  },
-  "homepage": "https://github.com/DreamLongYT/pkg-scaffold#readme"
   "dependencies": {
+    "acorn": "^8.17.0",
+    "acorn-walk": "^8.3.5",
     "npm-deprecated-check": "^1.4.0"
   }
 }
