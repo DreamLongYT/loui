@@ -5,10 +5,10 @@
 `pkg-scaffold` is a high-performance CLI tool designed to audit, clean, and initialize your JavaScript/TypeScript workspaces. It goes far beyond simple scaffolding by analyzing your source code's Abstract Syntax Tree (AST) to find critical issues like undeclared dependencies, orphaned packages, and security leaks.
 
 
-[![npm version](https://img.shields.io/npm/v/pkg-scaffold.svg?style=for-the-badge&color=CB3837)](https://www.npmjs.com/package/pkg-scaffold)
-[![npm downloads](https://img.shields.io/npm/dm/pkg-scaffold.svg?style=for-the-badge&color=34ADFF)](https://www.npmjs.com/package/pkg-scaffold)
-[![License](https://img.shields.io/badge/license-MIT-orange.svg?style=for-the-badge)](LICENSE)
-[![GitHub stars](https://img.shields.io/github/stars/DreamLongYT/pkg-scaffold.svg?style=for-the-badge&color=gold)](https://github.com/DreamLongYT/pkg-scaffold/stargazers)
+[![npm version](https://img.shields.io/npm/v/pkg-scaffold.svg?style=flat&color=CB3837)](https://www.npmjs.com/package/pkg-scaffold)
+[![npm downloads](https://img.shields.io/npm/dm/pkg-scaffold.svg?style=flat&color=34ADFF)](https://www.npmjs.com/package/pkg-scaffold)
+[![License](https://img.shields.io/badge/license-MIT-orange.svg?style=flat)](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/DreamLongYT/pkg-scaffold.svg?style=flat&color=gold)](https://github.com/DreamLongYT/pkg-scaffold/stargazers)
 
 ---
 
