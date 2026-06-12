@@ -1,14 +1,11 @@
 {
   "name": "pkg-scaffold",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Zero-config workspace initializer with advanced dependency intelligence: detects ghost dependencies (used but undeclared), orphaned packages (declared but unused), unused imports with file locations, deprecated packages, hardcoded secrets, and more.",
   "type": "module",
   "main": "index.js",
   "bin": {
     "pkg-scaffold": "./index.js"
-  },
-  "scripts": {
-    "postpublish": "git add . && git commit -m \"chore: auto-sync version bump and workspace configuration layers\" && git pull origin main --rebase && git push origin main"
   },
   "keywords": [
     "scaffold",
@@ -29,6 +26,14 @@
   ],
   "author": "DreamLongYT",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DreamLongYT/pkg-scaffold.git"
+  },
+  "bugs": {
+    "url": "https://github.com/DreamLongYT/pkg-scaffold/issues"
+  },
+  "homepage": "https://github.com/DreamLongYT/pkg-scaffold#readme",
   "dependencies": {
     "acorn": "^8.17.0",
     "acorn-walk": "^8.3.5",
