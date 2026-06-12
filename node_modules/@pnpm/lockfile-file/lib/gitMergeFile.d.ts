@@ -1,3 +1,0 @@
-import { type Lockfile } from '@pnpm/lockfile-types';
-export declare function autofixMergeConflicts(fileContent: string): Lockfile;
-export declare function isDiff(fileContent: string): boolean;
