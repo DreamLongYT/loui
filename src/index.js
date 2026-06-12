@@ -1,8 +1,16 @@
+/**
+ * ============================================================================
+ * 📦 pkg-scaffold v3.0.0: Unified Architectural Refactoring Orchestrator
+ * ============================================================================
+ * Main execution bridge managing multi-pass compilation cycles, semantic cross-linking,
+ * supply-chain validation audits, and automated git self-healing rollbacks.
+ */
+
 import fs from 'fs/promises';
 import path from 'path';
 import ansis from 'ansis';
 
-// Import Local System Domain Sub-Layers
+// Import local domain architecture sub-systems
 import { EngineContext } from './EngineContext.js';
 import { ASTAnalyzer } from './ast/ASTAnalyzer.js';
 import { BarrelParser } from './ast/BarrelParser.js';
@@ -18,192 +26,202 @@ import { GitSandbox } from './healing/GitSandbox.js';
 import { SelfHealer } from './healing/SelfHealer.js';
 import { IncrementalCacheManager } from './performance/GraphCache.js';
 import { WorkerPool } from './performance/WorkerPool.js';
+import { SupplyChainGuard } from './security/SupplyChainGuard.js';
 
-const pool = new WorkerPool(this.context);
-const threadingSuccess = await pool.parallelAnalyzeCodebase(fileList, this);
-
-if (!threadingSuccess) {
-  // Safe fallback to single thread sequential execution if thread spawning drops
-  for (const filePath of fileList) {
-    const node = this.context.createNode(filePath);
-    await this.analyzer.processFile(filePath, node);
-  }
-}
 /**
- * Orchestrator Class Coordinating the Complete Core Operational Cycle
+ * Primary Refactoring Engine Core Coordination Controller
  */
 export class RefactoringEngine {
   constructor(options = {}) {
-    // Phase 1: Initialize System Infrastructure Options
+    // Stage 1: Instantiate State Registers and Global Variables context
     this.context = new EngineContext(options);
     
-    // Phase 2: Wire Structural Resolution Architectures
+    // Stage 2: Initialize File Mappers and Multi-Package Graph Networks
     this.pathMapper = new PathMapper(this.context);
     this.workspaceGraph = new WorkspaceGraph(this.context);
     this.resolver = new DependencyResolver(this.context, this.pathMapper, this.workspaceGraph);
     
-    // Phase 3: Bind Core Code Parsing Libraries
+    // Stage 3: Wire official AST Syntax parsers and framework processors
     this.analyzer = new ASTAnalyzer(this.context);
     this.barrelParser = new BarrelParser(this.context, this.resolver);
     this.magicDetector = new MagicDetector(this.context);
     
-    // Phase 4: Configure Code Optimization & Safety Subsystems
+    // Stage 4: Connect Transaction managers and surgical code generation scripts
     this.txManager = new TransactionManager(this.context);
     this.impactAnalyzer = new ImpactAnalyzer(this.context);
     this.sourceRewriter = new SourceRewriter(this.context);
     this.typeIntegrity = new TypeIntegrity(this.context);
     
-    // Phase 5: Initialize Caching and Verification Sandbox Environments
+    // Stage 5: Bind security audit utilities and performance cache rings
+    this.supplyChainGuard = new SupplyChainGuard(this.context);
     this.cacheManager = new IncrementalCacheManager(this.context);
+    this.workerPool = new WorkerPool(this.context);
     this.gitSandbox = new GitSandbox(this.context);
     this.selfHealer = new SelfHealer(this.context, this.txManager, this.gitSandbox);
   }
 
   /**
-   * Main Execution Entrypoint running sequential compilation passes.
+   * Main Operational Loop executing multi-stage analysis passes across files.
    */
   async run() {
     try {
-      // Step 1: Boot Environment Configurations
+      console.log(ansis.bold.green('🎯 Starting pkg-scaffold Operational Optimization Cycle...'));
+      
+      // Pass 1: Boot environment contexts and load alias configuration maps
       await this.context.initialize();
       await this.pathMapper.loadMappings(this.context.tsconfigFilename);
       
       if (this.context.isWorkspaceEnabled) {
-        console.log(ansis.dim('🌐 Constructing localized workspace mesh mappings...'));
+        console.log(ansis.dim('🌐 Mapping local monorepo workspaces and package mesh layers...'));
         await this.workspaceGraph.initializeWorkspaceMesh();
       }
 
-      // Challenge #14: Load asset fingerprints from disk to enable rapid cold starts
-      console.log(ansis.cyan('🚀 Compiling incremental cache fingerprints...'));
+      // Load asset fingerprints from disk cache to maximize cold-start performance
       const cacheManifest = await this.cacheManager.loadCacheManifest();
 
-      // Step 2: Recurse across directories to collect target file components
+      // Pass 2: Recursively crawl directories to compile target codebase files list
       const fileList = [];
       await this.discoverSourceFiles(this.context.cwd, fileList);
       this.context.metrics.totalFilesScanned = fileList.length;
 
-      const frameworkEcosystems = await this.magicDetector.identifyActiveProjectEcosystems(this.context.cwd);
+      // Identify meta-framework setups (Next.js, Remix, Nuxt, etc.)
+      const activeFrameworkEcosystems = await this.magicDetector.identifyActiveProjectEcosystems(this.context.cwd);
 
-      // Step 3: Run Pass 1 over files (Parse code trees or read cached delta logs)
-      for (const filePath of fileList) {
+      // Separate explicit configuration packages out for targeted supply chain security checks
+      const sourceCodeFilesList = [];
+      for (const file of fileList) {
+        if (file.endsWith('package.json')) {
+          await this.auditManifestSupplyChain(file);
+        } else {
+          sourceCodeFilesList.push(file);
+        }
+      }
+
+      // Pass 3: Process source file tokens using high-performance concurrent workers
+      let parallelParseCompleted = false;
+      if (sourceCodeFilesList.length > 10) {
+        parallelParseCompleted = await this.workerPool.parallelAnalyzeCodebase(sourceCodeFilesList, this);
+      }
+
+      // Synchronous fallback loop to parse remaining files or cache misses
+      for (const filePath of sourceCodeFilesList) {
         const node = this.context.createNode(filePath);
         const currentHash = await this.cacheManager.computeHash(filePath);
         node.contentHash = currentHash;
 
-        // Challenge #12 & #13: Extract declared fields from package files to audit safety configurations
-        if (filePath.endsWith('package.json')) {
-          await this.auditPackageDependencies(filePath);
-        }
-
-        // Challenge #15: Load pre-computed analysis if the current file hash matches the cache log
         if (cacheManifest[filePath] && cacheManifest[filePath].hash === currentHash) {
           this.context.metrics.cacheHits++;
           this.hydrateNodeFromCache(node, cacheManifest[filePath]);
-        } else {
-          this.context.metrics.cacheMisses++;
-          const parseSuccess = await this.analyzer.processFile(filePath, node);
-          if (!parseSuccess && this.context.verbose) {
-            console.warn(ansis.yellow(`⚠️  Skipping unparseable syntax node bounds: ${filePath}`));
-          }
+          parallelParseCompleted = true; // Cached elements don't need worker allocations
         }
 
-        // Apply ecosystem-specific routing protections (Next.js, SvelteKit, etc.)
-        this.magicDetector.injectVirtualConsumerEdges(filePath, node, frameworkEcosystems);
+        if (!parallelParseCompleted) {
+          this.context.metrics.cacheMisses++;
+          await this.analyzer.processFile(filePath, node);
+        }
+
+        // Apply ecosystem overrides directly to our parsed memory maps
+        this.magicDetector.injectVirtualConsumerEdges(filePath, node, activeFrameworkEcosystems);
       }
 
-      // Step 4: Run Pass 2 to establish semantic connection paths across the dependency graph
-      console.log(ansis.dim('🔗 Linking dependency chains across components...'));
+      // Pass 4: Evaluate graph edges and link connections across the codebase mesh
+      console.log(ansis.dim('🔗 Linking graph edges and checking structural usage paths...'));
       await this.linkDependencyGraph();
 
-      // Step 5: Process compilation data and evaluate orphan metrics
+      // Pass 5: Compile metrics summary and print diagnostics report
       const analysisSummary = this.context.generateSummaryReport();
       this.displayConsoleDiagnostics(analysisSummary);
 
-      // Step 6: Execute Refactoring Tasks inside our Git safety sandbox if --fix is set
+      // Pass 6: Run self-healing automated transformations if --fix is set
       if (this.context.allowAutoFix) {
-        const hasOptimizationsStaged = 
+        const structuralModificationsStaged = 
           analysisSummary.structuralIssuesDetected.deadFiles.length > 0 || 
           analysisSummary.structuralIssuesDetected.deadExports.length > 0;
 
-        if (hasOptimizationsStaged) {
+        if (structuralModificationsStaged) {
           await this.selfHealer.runSelfHealingLifecycle(async () => {
-            // Task A: Purge unreferenced code components from the filesystem
+            
+            // Sub-Task A: Purge completely unreferenced dangling components
             for (const relPath of analysisSummary.structuralIssuesDetected.deadFiles) {
               const absPath = path.resolve(this.context.cwd, relPath);
-              console.log(ansis.red(`✂️  Removing unreferenced component: ${relPath}`));
+              console.log(ansis.red(`✂️  Removing unreferenced file: ${relPath}`));
               await this.txManager.stageDeletion(absPath);
-              this.context.metrics.prunedFilesCount++;
             }
 
-            // Task B: Surgically remove unused named export blocks from active code files
+            // Sub-Task B: Surgically remove unused named export blocks from active files
             for (const unusedExport of analysisSummary.structuralIssuesDetected.deadExports) {
               const absPath = path.resolve(this.context.cwd, unusedExport.file);
               const node = this.context.graph.get(absPath);
               
               if (!node) continue;
               const meta = node.internalExports.get(unusedExport.symbol);
-              
-              // Double check safety boundaries before altering code lines
-              const validation = await this.impactAnalyzer.verifyRefactorSafety(absPath, unusedExport.symbol, this.context.graph);
-              
-              if (validation.isSafeToPrune) {
-                console.log(ansis.yellow(`⚡ Stripping unused export [${unusedExport.symbol}] from: ${unusedExport.file}`));
+
+              // Perform safety analysis to ensure the token isn't called via dynamic runtime methods
+              const safetyVerdict = await this.impactAnalyzer.verifyRefactorSafety(absPath, unusedExport.symbol, this.context.graph);
+
+              if (safetyVerdict.isSafeToPrune) {
+                console.log(ansis.yellow(`⚡ Stripping unused export [${unusedExport.symbol}] from: ${unusedExport.file}:${unusedExport.line}`));
                 const currentText = await fs.readFile(absPath, 'utf8');
                 const nextText = await this.sourceRewriter.stripNamedExportSignature(absPath, unusedExport.symbol, meta);
                 
                 await this.txManager.stageWrite(absPath, nextText);
                 
-                // Keep .d.ts layout declarations aligned with changes
+                // Align matching type declaration boundaries (.d.ts) to prevent compilation errors
                 await this.typeIntegrity.synchronizeDeclarationFile(absPath, unusedExport.symbol);
-                this.context.metrics.prunedExportsCount++;
               } else if (this.context.verbose) {
-                console.log(ansis.gray(`🛡️  Preserved export [${unusedExport.symbol}] due to: ${validation.blockReason}`));
+                console.log(ansis.gray(`🛡️  Preserving symbol export [${unusedExport.symbol}] due to: ${safetyVerdict.blockReason}`));
               }
             }
           });
         }
       }
 
-      // Step 7: Write updated graph performance manifests back to disk
+      // Pass 7: Save optimized graph footprints back to the cache directory
       await this.cacheManager.saveCacheManifest(this.context.graph);
+      console.log(ansis.bold.green('\n✨ Core optimization cycle completed smoothly. Codebase workspace is healthy.'));
 
-    } catch (error) {
-      console.error(ansis.bold.red(`\n🚨 Operational Pipeline Abort Fault: ${error.message}`));
-      if (error.stack) console.error(ansis.dim(error.stack));
+    } catch (criticalFault) {
+      console.error(ansis.bold.red(`\n🚨 Critical Operational Pipeline Failure: ${criticalFault.message}`));
+      if (criticalFault.stack) console.error(ansis.dim(criticalFault.stack));
       process.exit(1);
     }
   }
 
   /**
-   * Loops over file records to trace and establish dependency paths across the system graph.
+   * Links nodes and processes barrel files recursively without regular expressions.
    */
   async linkDependencyGraph() {
     for (const [filePath, node] of this.context.graph.entries()) {
       
-      // Map standard static imports
+      // Connect standard module imports
       for (const specifier of node.explicitImports) {
         const resolvedPath = this.resolver.resolveModulePath(filePath, specifier);
         if (resolvedPath && this.context.graph.has(resolvedPath)) {
           this.context.graph.get(resolvedPath).incomingEdges.add(filePath);
-          node.resolvedInternalTargets.add(resolvedPath);
+          node.outgoingEdges.add(resolvedPath);
         }
       }
 
-      // Resolve redistributions and unwrap barrel structures inline
+      // Unroll re-exports and unwrap barrel file links recursively
       for (const specToken of node.importedSymbols) {
-        const [specifier, symbol] = specToken.split(':');
+        const delimiterIndex = specToken.indexOf(':');
+        if (delimiterIndex === -1) continue;
+
+        const specifier = specToken.slice(0, delimiterIndex);
+        const symbol = specToken.slice(delimiterIndex + 1);
+
         const resolvedPath = this.resolver.resolveModulePath(filePath, specifier);
         
         if (resolvedPath && symbol !== '*') {
-          const originInfo = await this.barrelParser.determineSymbolDeclarationOrigin(
+          const traceResolution = await this.barrelParser.determineSymbolDeclarationOrigin(
             resolvedPath, 
             symbol, 
             this.context.graph
           );
           
-          if (originInfo && this.context.graph.has(originInfo.originFile)) {
-            this.context.graph.get(originInfo.originFile).incomingEdges.add(filePath);
-            node.resolvedInternalTargets.add(originInfo.originFile);
+          if (traceResolution && this.context.graph.has(traceResolution.originFile)) {
+            this.context.graph.get(traceResolution.originFile).incomingEdges.add(filePath);
+            node.outgoingEdges.add(traceResolution.originFile);
           }
         }
       }
@@ -211,25 +229,28 @@ export class RefactoringEngine {
   }
 
   /**
-   * Audits package manifests to detect typosquatting patterns and structural risks.
+   * Audits package json files using token equality checks instead of fragile regex searches.
    */
-  async auditPackageDependencies(packageManifestPath) {
+  async auditManifestSupplyChain(packageJsonPath) {
     try {
-      const data = JSON.parse(await fs.readFile(packageManifestPath, 'utf8'));
-      const deps = Object.keys(data.dependencies || {});
-      const devDeps = Object.keys(data.devDependencies || {});
-      const combined = [...deps, ...devDeps];
-
-      // Challenge #12: Heuristic check for common dependency typo-squatting variants
-      const indicators = ['lodah-es', 'react-domm', 'promisify-anys', 'coor-js', 'enhanseed-resolve'];
+      const text = await fs.readFile(packageJsonPath, 'utf8');
+      const data = JSON.parse(text);
       
-      for (const depKey of combined) {
-        if (indicators.includes(depKey)) {
-          console.warn(ansis.bold.red(`🚨 Supply Chain Alert: High-risk package signature match [${depKey}] flagged inside package manifest.`));
-        }
+      const prodDeps = Object.keys(data.dependencies || {});
+      const devDeps = Object.keys(data.devDependencies || {});
+      const totalDependencies = [...prodDeps, ...devDeps];
+
+      // Pass dependencies down to our Levenshtein string-distance guard to find typosquat targets
+      const supplyChainThreats = this.supplyChainGuard.detectTyposquattingAnomalies(totalDependencies);
+      
+      for (const anomaly of supplyChainThreats) {
+        console.warn(ansis.bold.red(`🚨 Supply Chain Alert: Malicious package masking candidate discovered [${anomaly.maliciousCandidate}]. Mimics trusted library [${anomaly.targetMimicked}].`));
       }
+
+      // Verify lockfile hash configurations to catch poisoned manifests
+      await this.supplyChainGuard.verifyIntegrityLockfileHashes(packageJsonPath);
     } catch {
-      // Manifest unreadable; pass validation block safely
+      // Manifest unreadable or locked; skip gracefully
     }
   }
 
@@ -251,7 +272,7 @@ export class RefactoringEngine {
   }
 
   /**
-   * Recursively crawls the file system layout to discover indexable source code components.
+   * Crawls project roots using precise token extension checking instead of high-risk text matching.
    */
   async discoverSourceFiles(currentDirectory, fileAccumulator) {
     try {
@@ -261,7 +282,7 @@ export class RefactoringEngine {
         const absolutePath = path.join(currentDirectory, entry.name);
 
         if (entry.isDirectory()) {
-          // Standard exclusion filters
+          // Standard systemic exclusions filters
           if (entry.name === 'node_modules' || 
               entry.name === '.git' || 
               entry.name === '.scaffold-cache' || 
@@ -271,7 +292,7 @@ export class RefactoringEngine {
           }
           await this.discoverSourceFiles(absolutePath, fileAccumulator);
         } else if (entry.isFile()) {
-          const extension = path.extname(entry.name).toLowerCase();
+          const extension = path.extname(entry.name);
           if (extension === '.js' || 
               extension === '.ts' || 
               extension === '.tsx' || 
@@ -282,15 +303,12 @@ export class RefactoringEngine {
         }
       }
     } catch {
-      // Directory unreadable; return execution state safely
+      // Path unreadable or access locked; close loop gracefully
     }
   }
 
-  /**
-   * Formats and prints real-world diagnostics data inside terminal views.
-   */
   displayConsoleDiagnostics(report) {
-    console.log(ansis.bold.green('\n📊 Codebase Structural Analysis Summary'));
+    console.log(ansis.bold.green('\n📊 Codebase Structural Diagnostics Summary'));
     console.log(ansis.dim('============================================================'));
     console.log(`${ansis.bold('Processing Cycle Wall Duration:')} ${ansis.cyan(report.executionDuration)}`);
     console.log(`${ansis.bold('Total Files Indexed Globally  :')} ${ansis.white(report.totalFilesProcessed)}`);
@@ -298,16 +316,16 @@ export class RefactoringEngine {
     console.log(ansis.dim('------------------------------------------------------------'));
     
     if (report.structuralIssuesDetected.deadFiles.length > 0) {
-      console.log(ansis.red(`\nOrphaned Files Detected (${report.structuralIssuesDetected.deadFiles.length}):`));
+      console.log(ansis.bold.red(`\nOrphaned Files Flagged (${report.structuralIssuesDetected.deadFiles.length}):`));
       report.structuralIssuesDetected.deadFiles.forEach(f => console.log(ansis.dim(`  • ${f}`)));
     } else {
       console.log(ansis.green('\n✨ No orphaned or unreferenced component files found.'));
     }
 
     if (report.structuralIssuesDetected.deadExports.length > 0) {
-      console.log(ansis.yellow(`\nUnused Named Symbol Exports Detected (${report.structuralIssuesDetected.deadExports.length}):`));
+      console.log(ansis.bold.yellow(`\nUnused Named Symbol Exports Flagged (${report.structuralIssuesDetected.deadExports.length}):`));
       report.structuralIssuesDetected.deadExports.forEach(e => {
-        console.log(`  • ${ansis.dim(e.file)} -> [${ansis.yellow(e.symbol)}] (Type: ${e.type} @ line byte position offset: ${e.offset})`);
+        console.log(`  • ${ansis.dim(e.file)}:${e.line}:${e.column} -> [${ansis.yellow(e.symbol)}] (Type: ${e.type})`);
       });
     } else {
       console.log(ansis.green('✨ No dead or unused named symbols exported across components.'));
@@ -316,10 +334,10 @@ export class RefactoringEngine {
     if (report.structuralIssuesDetected.securityThreats.length > 0) {
       console.log(ansis.bold.red(`\n⚠️  High-Risk Variable Assignment Alerts (${report.structuralIssuesDetected.securityThreats.length}):`));
       report.structuralIssuesDetected.securityThreats.forEach(threat => {
-        console.log(`  • ${ansis.red(threat.file)} -> Variable [${ansis.bold(threat.identifier)}] matches entropy threat bounds (Shannon Score: ${threat.entropy})`);
+        console.log(`  • ${ansis.red(threat.file)}:${threat.line} -> Variable [${ansis.bold(threat.identifier)}] contains a high-entropy secret (Shannon Score: ${threat.entropy})`);
       });
     }
 
-    console.log(ansis.dim('\n============================================================'));
+    console.log(ansis.dim('\n============================================================\n'));
   }
 }
