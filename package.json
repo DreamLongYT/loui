@@ -1,6 +1,6 @@
 {
   "name": "pkg-scaffold",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "Zero-config workspace initializer with advanced dependency intelligence: detects ghost dependencies (used but undeclared), orphaned packages (declared but unused), unused imports with file locations, deprecated packages, hardcoded secrets, and more.",
   "type": "module",
   "main": "index.js",
@@ -35,8 +35,8 @@
   },
   "homepage": "https://github.com/DreamLongYT/pkg-scaffold#readme",
   "dependencies": {
-    "acorn": "^8.17.0",
-    "acorn-walk": "^8.3.5",
-    "npm-deprecated-check": "^1.4.0"
+    "enhanced-resolve": "^5.24.0",
+    "npm-deprecated-check": "^1.4.0",
+    "typescript": "^6.0.3"
   }
 }

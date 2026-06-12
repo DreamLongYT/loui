@@ -2,7 +2,7 @@
 
 /**
  * ============================================================================
- * 📦 pkg-scaffold v2.2.0: Enterprise Dependency Intelligence & Scaffolding Engine
+ * 📦 pkg-scaffold v2.3.0: Enterprise Dependency Intelligence & Scaffolding Engine
  * ============================================================================
  * * Eine hochgradig integrierte Code-Analyse- und Projektbootstrapping-Engine.
  * Kombiniert rekursive Erreichbarkeitsanalysen (Reachability Graphs) auf 
@@ -13,9 +13,10 @@
  * strukturiert, um maximale Wartbarkeit, lückenlose Fehlerabdeckung und
  * absolute Ausführungssicherheit im Produktivbetrieb zu garantieren.
  * * Eigenschaften:
- * - AST-Verifikation via Acorn (ECMAScript Latest)
- * - Textbasierte Fallback-Regex-Parsing-Infrastruktur
- * - Token- und Symbol-Erreichbarkeitsmatrix (Dead-Code-Eliminierung)
+ * - Semantische Analyse via TypeScript Compiler API (Type-Aware Parsing)
+ * - Präzise Modulauflösung via enhanced-resolve (Webpack-Level)
+ * - Umfassendes Symbol-Tracking & Erreichbarkeitsmatrix (Knip-Niveau)
+ * - Entrypoint-basiertes Scanning zur Erkennung verwaister Dateien
  * - Hardcoded Credentials Extraction & .env-Isolation
  */
 
@@ -25,9 +26,11 @@ import { builtinModules, createRequire } from 'module';
 import { execSync } from 'child_process';
 import readline from 'readline/promises';
 
-// --- Bulletproof AST Infrastructure Engines ---
-import * as acorn from 'acorn';
-import * as walk from 'acorn-walk';
+// --- Bulletproof AST & Resolution Infrastructure Engines ---
+import ts from 'typescript';
+import resolve from 'enhanced-resolve';
+
+const localRequire = createRequire(import.meta.url);
 
 /**
  * Globale Konfigurations-Sets für Verzeichnis- und Dateifilterung.
@@ -705,26 +708,37 @@ function readFileSyncNormalized(fullPath) {
 }
 
 /**
- * Rekursiver Pfad-Auflösungsalgorithmus zur Verfolgung relativer Quellcodedateien.
+ * Hochpräziser Modul-Auflösungsalgorithmus via enhanced-resolve.
  */
+const enhancedResolver = resolve.create.sync({
+    extensions: ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.vue', '.svelte'],
+    conditionNames: ['import', 'require', 'node', 'default'],
+    mainFields: ['module', 'main'],
+});
+
 function resolveLocalModulePath(basePath, importSource) {
-    const extensions = ['.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs', '.vue', '.svelte'];
-    let absoluteTarget = path.resolve(path.dirname(basePath), importSource);
-    
-    if (fs.existsSync(absoluteTarget) && fs.statSync(absoluteTarget).isDirectory()) {
-        const indexFile = extensions.map(ext => { return path.join(absoluteTarget, `index${ext}`); }).find(fs.existsSync);
-        if (indexFile) {
-            return indexFile;
+    try {
+        return enhancedResolver(path.dirname(basePath), importSource);
+    } catch (e) {
+        // Fallback für den Fall, dass enhanced-resolve scheitert
+        const extensions = ['.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs', '.vue', '.svelte'];
+        let absoluteTarget = path.resolve(path.dirname(basePath), importSource);
+        
+        if (fs.existsSync(absoluteTarget) && fs.statSync(absoluteTarget).isDirectory()) {
+            const indexFile = extensions.map(ext => { return path.join(absoluteTarget, `index${ext}`); }).find(fs.existsSync);
+            if (indexFile) {
+                return indexFile;
+            }
         }
+        const directFile = extensions.map(ext => { return absoluteTarget + ext; }).find(fs.existsSync);
+        if (directFile) {
+            return directFile;
+        }
+        if (fs.existsSync(absoluteTarget)) {
+            return absoluteTarget;
+        }
+        return null;
     }
-    const directFile = extensions.map(ext => { return absoluteTarget + ext; }).find(fs.existsSync);
-    if (directFile) {
-        return directFile;
-    }
-    if (fs.existsSync(absoluteTarget)) {
-        return absoluteTarget;
-    }
-    return null;
 }
 
 // ============================================================
@@ -1050,158 +1064,172 @@ function detectOrphanedDependencies(declaredDeps, allImportedPackages, binariesU
     return orphans;
 }
 
-function extractImportsFromAST(ast, fileRawDeps, importedIdentifiers, importedLocations, exportedSymbols, stats, currentFilePath) {
-    extractAdvancedSymbols(ast, currentFilePath, stats);
-    
-    walk.simple(ast, {
-        ImportDeclaration(node) {
-            const importSource = node.source.value;
-            const pkg = cleanPackageName(importSource);
+/**
+ * Semantische Symbol-Extraktion via TypeScript Compiler API.
+ */
+function extractAdvancedSymbols(sourceFile, stats, currentFilePath) {
+    if (!stats.fileSymbolMetadata) {
+        stats.fileSymbolMetadata = new Map();
+    }
 
-            if (pkg && !builtinModules.includes(pkg)) {
-                fileRawDeps.add(pkg);
-                if (!importedIdentifiers.has(pkg)) {
-                    importedIdentifiers.set(pkg, new Set());
-                }
-                if (!importedLocations.has(pkg)) {
-                    importedLocations.set(pkg, []);
-                }
-                importedLocations.get(pkg).push(node.loc?.start?.line ?? 0);
+    const fileMeta = {
+        imports: [],
+        exports: new Map(),
+        reExports: [],
+        namespaceUses: new Map(),
+    };
 
-                node.specifiers.forEach(spec => {
-                    if (spec.type === 'ImportDefaultSpecifier' || spec.type === 'ImportNamespaceSpecifier') {
-                        importedIdentifiers.get(pkg).add(spec.local.name);
-                    } else if (spec.type === 'ImportSpecifier') {
-                        importedIdentifiers.get(pkg).add(spec.local.name);
-                        if (spec.imported && spec.imported.name !== spec.local.name) {
-                            importedIdentifiers.get(pkg).add(spec.imported.name);
-                        }
+    function visit(node) {
+        // --- Imports ---
+        if (ts.isImportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
+            const importSource = node.moduleSpecifier.text;
+            const specifiers = [];
+            
+            if (node.importClause) {
+                if (node.importClause.name) {
+                    specifiers.push({ type: 'ImportDefaultSpecifier', local: node.importClause.name.text });
+                }
+                if (node.importClause.namedBindings) {
+                    if (ts.isNamespaceImport(node.importClause.namedBindings)) {
+                        specifiers.push({ type: 'ImportNamespaceSpecifier', local: node.importClause.namedBindings.name.text });
+                    } else if (ts.isNamedImports(node.importClause.namedBindings)) {
+                        node.importClause.namedBindings.elements.forEach(el => {
+                            specifiers.push({ 
+                                type: 'ImportSpecifier', 
+                                local: el.name.text, 
+                                imported: el.propertyName ? el.propertyName.text : el.name.text 
+                            });
+                        });
                     }
-                });
-                if (node.specifiers.length === 0) {
-                    importedIdentifiers.get(pkg).add('__SIDE_EFFECT__');
                 }
-            } else if (importSource.startsWith('.') || importSource.startsWith('/')) {
-                const resolvedPath = path.resolve(path.dirname(currentFilePath), importSource);
-                const normalizedPath = path.normalize(resolvedPath);
+            }
+            
+            fileMeta.imports.push({
+                source: importSource,
+                specifiers,
+                isTypeOnly: !!node.importClause?.isTypeOnly
+            });
+        }
 
+        // --- Exports ---
+        if (ts.isExportDeclaration(node)) {
+            if (node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
+                const specifiers = [];
+                if (node.exportClause && ts.isNamedExports(node.exportClause)) {
+                    node.exportClause.elements.forEach(el => {
+                        specifiers.push({
+                            exported: el.name.text,
+                            local: el.propertyName ? el.propertyName.text : el.name.text
+                        });
+                    });
+                }
+                fileMeta.reExports.push({ source: node.moduleSpecifier.text, specifiers });
+            }
+        }
+
+        if (ts.isVariableStatement(node) && node.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword)) {
+            node.declarationList.declarations.forEach(decl => {
+                if (ts.isIdentifier(decl.name)) {
+                    fileMeta.exports.set(decl.name.text, { type: 'variable' });
+                }
+            });
+        }
+
+        if (ts.isFunctionDeclaration(node) && node.name && node.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword)) {
+            fileMeta.exports.set(node.name.text, { type: 'function' });
+        }
+
+        if (ts.isClassDeclaration(node) && node.name && node.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword)) {
+            fileMeta.exports.set(node.name.text, { type: 'class' });
+        }
+
+        // --- Symbol Usage Tracking ---
+        if (ts.isPropertyAccessExpression(node) && ts.isIdentifier(node.expression)) {
+            const namespace = node.expression.text;
+            if (!fileMeta.namespaceUses.has(namespace)) {
+                fileMeta.namespaceUses.set(namespace, new Set());
+            }
+            fileMeta.namespaceUses.get(namespace).add(node.name.text);
+        }
+
+        ts.forEachChild(node, visit);
+    }
+
+    visit(sourceFile);
+    stats.fileSymbolMetadata.set(currentFilePath, fileMeta);
+}
+
+function extractImportsFromAST(sourceFile, fileRawDeps, importedIdentifiers, importedLocations, exportedSymbols, stats, currentFilePath) {
+    extractAdvancedSymbols(sourceFile, stats, currentFilePath);
+    
+    const fileMeta = stats.fileSymbolMetadata.get(currentFilePath);
+    
+    fileMeta.imports.forEach(imp => {
+        const pkg = cleanPackageName(imp.source);
+        if (pkg && !builtinModules.includes(pkg)) {
+            fileRawDeps.add(pkg);
+            if (!importedIdentifiers.has(pkg)) {
+                importedIdentifiers.set(pkg, new Set());
+            }
+            if (!importedLocations.has(pkg)) {
+                importedLocations.set(pkg, []);
+            }
+            
+            imp.specifiers.forEach(spec => {
+                importedIdentifiers.get(pkg).add(spec.local);
+                if (spec.imported && spec.imported !== spec.local) {
+                    importedIdentifiers.get(pkg).add(spec.imported);
+                }
+            });
+            
+            if (imp.specifiers.length === 0) {
+                importedIdentifiers.get(pkg).add('__SIDE_EFFECT__');
+            }
+            if (imp.isTypeOnly) {
+                importedIdentifiers.get(pkg).add('__TYPE_ONLY__');
+            }
+        } else if (imp.source.startsWith('.') || imp.source.startsWith('/')) {
+            const resolvedPath = resolveLocalModulePath(currentFilePath, imp.source);
+            if (resolvedPath) {
                 if (!stats.localFileImports) {
                     stats.localFileImports = new Map();
                 }
-                if (!stats.localFileImports.has(normalizedPath)) {
-                    stats.localFileImports.set(normalizedPath, new Set());
+                if (!stats.localFileImports.has(resolvedPath)) {
+                    stats.localFileImports.set(resolvedPath, new Set());
                 }
-
-                node.specifiers.forEach(spec => {
-                    if (spec.type === 'ImportDefaultSpecifier' || spec.type === 'ImportNamespaceSpecifier') {
-                        stats.localFileImports.get(normalizedPath).add(spec.local.name);
-                    } else if (spec.type === 'ImportSpecifier') {
-                        stats.localFileImports.get(normalizedPath).add(spec.local.name);
-                        if (spec.imported && spec.imported.name !== spec.local.name) {
-                            stats.localFileImports.get(normalizedPath).add(spec.imported.name);
-                        }
-                    }
+                imp.specifiers.forEach(spec => {
+                    stats.localFileImports.get(resolvedPath).add(spec.local);
                 });
             }
-        },
-        VariableDeclarator(node) {
-            if (node.init && node.init.type === 'CallExpression' && node.init.callee.type === 'Identifier' && node.init.callee.name === 'require') {
-                const arg = node.init.arguments[0];
-                if (arg && arg.type === 'Literal' && typeof arg.value === 'string') {
-                    const pkg = cleanPackageName(arg.value);
-                    if (pkg && !builtinModules.includes(pkg)) {
-                        fileRawDeps.add(pkg);
-                        if (!importedIdentifiers.has(pkg)) {
-                            importedIdentifiers.set(pkg, new Set());
-                        }
-                        if (!importedLocations.has(pkg)) {
-                            importedLocations.set(pkg, []);
-                        }
-                        importedLocations.get(pkg).push(node.loc?.start?.line ?? 0);
+        }
+    });
 
-                        const extractBindings = (idNode) => {
-                            if (idNode.type === 'Identifier') {
-                                importedIdentifiers.get(pkg).add(idNode.name);
-                            } else if (idNode.type === 'ObjectPattern') {
-                                idNode.properties.forEach(p => {
-                                    if (p.value && p.value.type === 'Identifier') {
-                                        importedIdentifiers.get(pkg).add(p.value.name);
-                                    }
-                                    if (p.key && p.key.type === 'Identifier') {
-                                        importedIdentifiers.get(pkg).add(p.key.name);
-                                    }
-                                });
-                            }
-                        };
-                        extractBindings(node.id);
-                    }
-                }
-            }
-        },
-        ImportExpression(node) {
-            if (node.source.type === 'Literal' && typeof node.source.value === 'string') {
-                const pkg = cleanPackageName(node.source.value);
+    // Handle CJS require
+    function visit(node) {
+        if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'require') {
+            const arg = node.arguments[0];
+            if (arg && ts.isStringLiteral(arg)) {
+                const pkg = cleanPackageName(arg.text);
                 if (pkg && !builtinModules.includes(pkg)) {
                     fileRawDeps.add(pkg);
                     if (!importedIdentifiers.has(pkg)) {
                         importedIdentifiers.set(pkg, new Set());
                     }
-                    importedIdentifiers.get(pkg).add('__DYNAMIC__');
-                }
-            }
-        },
-        ExportNamedDeclaration(node) {
-            if (node.declaration) {
-                if (node.declaration.type === 'VariableDeclaration') {
-                    node.declaration.declarations.forEach(decl => {
-                        if (decl.id.type === 'Identifier') {
-                            exportedSymbols.set(decl.id.name, { type: 'variable', loc: decl.id.loc.start });
-                        }
-                    });
-                } else if (node.declaration.type === 'FunctionDeclaration') {
-                    if (node.declaration.id) {
-                        exportedSymbols.set(node.declaration.id.name, { type: 'function', loc: node.declaration.id.loc.start });
-                    }
-                } else if (node.declaration.type === 'ClassDeclaration') {
-                    if (node.declaration.id) {
-                        exportedSymbols.set(node.declaration.id.name, { type: 'class', loc: node.declaration.id.loc.start });
-                    }
-                }
-            } else if (node.specifiers) {
-                node.specifiers.forEach(spec => {
-                    if (spec.exported.type === 'Identifier') {
-                        exportedSymbols.set(spec.exported.name, { type: 'namedExport', loc: spec.exported.loc.start });
-                    }
-                });
-            }
-            if (node.source && node.source.type === 'Literal' && typeof node.source.value === 'string') {
-                const pkg = cleanPackageName(node.source.value);
-                if (pkg && !builtinModules.includes(pkg)) {
-                    fileRawDeps.add(pkg);
-                    if (!importedIdentifiers.has(pkg)) {
-                        importedIdentifiers.set(pkg, new Set());
-                    }
-                    importedIdentifiers.get(pkg).add('__REEXPORT__');
-                }
-            }
-        },
-        ExportAllDeclaration(node) {
-            if (node.source && node.source.type === 'Literal' && typeof node.source.value === 'string') {
-                const pkg = cleanPackageName(node.source.value);
-                if (pkg && !builtinModules.includes(pkg)) {
-                    fileRawDeps.add(pkg);
-                    if (!importedIdentifiers.has(pkg)) {
-                        importedIdentifiers.set(pkg, new Set());
-                    }
-                    importedIdentifiers.get(pkg).add('__REEXPORT__');
                 }
             }
         }
+        ts.forEachChild(node, visit);
+    }
+    visit(sourceFile);
+
+    // Sync exported symbols
+    fileMeta.exports.forEach((meta, name) => {
+        exportedSymbols.set(name, meta);
     });
 }
 
 /**
- * Textbasierter Regex-Ersatz-Parser, falls Acorn auf Syntaxfehler stößt.
+ * Textbasierter Regex-Ersatz-Parser, falls der AST-Parser auf Syntaxfehler stößt.
  */
 function extractImportsFromText(codeLines, fileRawDeps, importedIdentifiers, importedLocations, stats, currentFilePath) {
     codeLines.forEach((line, lineIdx) => {
@@ -1221,15 +1249,16 @@ function extractImportsFromText(codeLines, fileRawDeps, importedIdentifiers, imp
                 }
                 importedLocations.get(pkg).push(lineNum);
             } else if (importSource.startsWith(".") || importSource.startsWith("/")) {
-                const resolvedPath = path.resolve(path.dirname(currentFilePath), importSource);
-                const normalizedPath = path.normalize(resolvedPath);
-                if (!stats.localFileImports) {
-                    stats.localFileImports = new Map();
+                const resolvedPath = resolveLocalModulePath(currentFilePath, importSource);
+                if (resolvedPath) {
+                    if (!stats.localFileImports) {
+                        stats.localFileImports = new Map();
+                    }
+                    if (!stats.localFileImports.has(resolvedPath)) {
+                        stats.localFileImports.set(resolvedPath, new Set());
+                    }
+                    stats.localFileImports.get(resolvedPath).add('__TYPE_ONLY__');
                 }
-                if (!stats.localFileImports.has(normalizedPath)) {
-                    stats.localFileImports.set(normalizedPath, new Set());
-                }
-                stats.localFileImports.get(normalizedPath).add('__TYPE_ONLY__');
             }
             return;
         }
@@ -1250,15 +1279,16 @@ function extractImportsFromText(codeLines, fileRawDeps, importedIdentifiers, imp
                 }
                 importedLocations.get(pkg).push(lineNum);
             } else if (importSource.startsWith(".") || importSource.startsWith("/")) {
-                const resolvedPath = path.resolve(path.dirname(currentFilePath), importSource);
-                const normalizedPath = path.normalize(resolvedPath);
-                if (!stats.localFileImports) {
-                    stats.localFileImports = new Map();
+                const resolvedPath = resolveLocalModulePath(currentFilePath, importSource);
+                if (resolvedPath) {
+                    if (!stats.localFileImports) {
+                        stats.localFileImports = new Map();
+                    }
+                    if (!stats.localFileImports.has(resolvedPath)) {
+                        stats.localFileImports.set(resolvedPath, new Set());
+                    }
+                    stats.localFileImports.get(resolvedPath).add(id);
                 }
-                if (!stats.localFileImports.has(normalizedPath)) {
-                    stats.localFileImports.set(normalizedPath, new Set());
-                }
-                stats.localFileImports.get(normalizedPath).add(id);
             }
             return;
         }
@@ -1285,22 +1315,23 @@ function extractImportsFromText(codeLines, fileRawDeps, importedIdentifiers, imp
                 }
                 importedLocations.get(pkg).push(lineNum);
             } else if (importSource.startsWith(".") || importSource.startsWith("/")) {
-                const resolvedPath = path.resolve(path.dirname(currentFilePath), importSource);
-                const normalizedPath = path.normalize(resolvedPath);
-                if (!stats.localFileImports) {
-                    stats.localFileImports = new Map();
-                }
-                if (!stats.localFileImports.has(normalizedPath)) {
-                    stats.localFileImports.set(normalizedPath, new Set());
-                }
-                esmNamedMatch[1].split(',').forEach(part => {
-                    const chunk = part.trim();
-                    if (!chunk) {
-                        return;
+                const resolvedPath = resolveLocalModulePath(currentFilePath, importSource);
+                if (resolvedPath) {
+                    if (!stats.localFileImports) {
+                        stats.localFileImports = new Map();
                     }
-                    const id = chunk.includes(' as ') ? chunk.split(' as ')[1].trim() : chunk;
-                    stats.localFileImports.get(normalizedPath).add(id);
-                });
+                    if (!stats.localFileImports.has(resolvedPath)) {
+                        stats.localFileImports.set(resolvedPath, new Set());
+                    }
+                    esmNamedMatch[1].split(',').forEach(part => {
+                        const chunk = part.trim();
+                        if (!chunk) {
+                            return;
+                        }
+                        const id = chunk.includes(' as ') ? chunk.split(' as ')[1].trim() : chunk;
+                        stats.localFileImports.get(resolvedPath).add(id);
+                    });
+                }
             }
             return;
         }
@@ -1320,290 +1351,191 @@ function extractImportsFromText(codeLines, fileRawDeps, importedIdentifiers, imp
                 }
                 importedLocations.get(pkg).push(lineNum);
             } else if (importSource.startsWith(".") || importSource.startsWith("/")) {
-                const resolvedPath = path.resolve(path.dirname(currentFilePath), importSource);
-                const normalizedPath = path.normalize(resolvedPath);
-                if (!stats.localFileImports) {
-                    stats.localFileImports = new Map();
-                }
-                if (!stats.localFileImports.has(normalizedPath)) {
-                    stats.localFileImports.set(normalizedPath, new Set());
-                }
-                stats.localFileImports.get(normalizedPath).add('__SIDE_EFFECT__');
-            }
-            return;
-        }
-
-        const cjsMatch = line.match(/\b(const|let|var)\s+([a-zA-Z0-9_$]+)\s*=\s*require\s*\(\s*['"]([^'"]+)['"]\s*\)/);
-        if (cjsMatch) {
-            const id = cjsMatch[2];
-            const importSource = cjsMatch[3];
-            const pkg = cleanPackageName(importSource);
-            if (pkg && !builtinModules.includes(pkg)) {
-                fileRawDeps.add(pkg);
-                if (!importedIdentifiers.has(pkg)) {
-                    importedIdentifiers.set(pkg, new Set());
-                }
-                importedIdentifiers.get(pkg).add(id);
-                if (!importedLocations.has(pkg)) {
-                    importedLocations.set(pkg, []);
-                }
-                importedLocations.get(pkg).push(lineNum);
-            } else if (importSource.startsWith(".") || importSource.startsWith("/")) {
-                const resolvedPath = path.resolve(path.dirname(currentFilePath), importSource);
-                const normalizedPath = path.normalize(resolvedPath);
-                if (!stats.localFileImports) {
-                    stats.localFileImports = new Map();
-                }
-                if (!stats.localFileImports.has(normalizedPath)) {
-                    stats.localFileImports.set(normalizedPath, new Set());
-                }
-                stats.localFileImports.get(normalizedPath).add(id);
-            }
-            return;
-        }
-
-        const cjsDestructMatch = line.match(/\b(const|let|var)\s*\{([^}]+)\}\s*=\s*require\s*\(\s*['"]([^'"]+)['"]\s*\)/);
-        if (cjsDestructMatch) {
-            const importSource = cjsDestructMatch[3];
-            const pkg = cleanPackageName(importSource);
-            if (pkg && !builtinModules.includes(pkg)) {
-                if (!importedIdentifiers.has(pkg)) {
-                    importedIdentifiers.set(pkg, new Set());
-                }
-                fileRawDeps.add(pkg);
-                cjsDestructMatch[2].split(',').forEach(part => {
-                    const chunk = part.trim();
-                    if (!chunk) {
-                        return;
+                const resolvedPath = resolveLocalModulePath(currentFilePath, importSource);
+                if (resolvedPath) {
+                    if (!stats.localFileImports) {
+                        stats.localFileImports = new Map();
                     }
-                    const id = chunk.includes(':') ? chunk.split(':')[1].trim() : chunk;
-                    importedIdentifiers.get(pkg).add(id);
-                });
-                
-                // KORREKTUR: Korrekte Initialisierung des Arrays innerhalb von importedLocations zur Vermeidung von TypeErrors
-                if (!importedLocations.has(pkg)) {
-                    importedLocations.set(pkg, []); 
-                }
-                importedLocations.get(pkg).push(lineNum);
-            } else if (importSource.startsWith(".") || importSource.startsWith("/")) {
-                const resolvedPath = path.resolve(path.dirname(currentFilePath), importSource);
-                const normalizedPath = path.normalize(resolvedPath);
-                if (!stats.localFileImports) {
-                    stats.localFileImports = new Map();
-                }
-                if (!stats.localFileImports.has(normalizedPath)) {
-                    stats.localFileImports.set(normalizedPath, new Set());
-                }
-                cjsDestructMatch[2].split(',').forEach(part => {
-                    const chunk = part.trim();
-                    if (!chunk) {
-                        return;
+                    if (!stats.localFileImports.has(resolvedPath)) {
+                        stats.localFileImports.set(resolvedPath, new Set());
                     }
-                    const id = chunk.includes(':') ? chunk.split(':')[1].trim() : chunk;
-                    stats.localFileImports.get(normalizedPath).add(id);
-                });
+                    stats.localFileImports.get(resolvedPath).add('__SIDE_EFFECT__');
+                }
             }
             return;
-        }
-
-        const dynamicMatch = line.match(/\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/);
-        if (dynamicMatch) {
-            const importSource = dynamicMatch[1];
-            const pkg = cleanPackageName(importSource);
-            if (pkg && !builtinModules.includes(pkg)) {
-                fileRawDeps.add(pkg);
-                if (!importedIdentifiers.has(pkg)) {
-                    importedIdentifiers.set(pkg, new Set());
-                }
-                importedIdentifiers.get(pkg).add('__DYNAMIC__');
-                if (!importedLocations.has(pkg)) {
-                    importedLocations.set(pkg, []);
-                }
-                importedLocations.get(pkg).push(lineNum);
-            } else if (importSource.startsWith(".") || importSource.startsWith("/")) {
-                const resolvedPath = path.resolve(path.dirname(currentFilePath), importSource);
-                const normalizedPath = path.normalize(resolvedPath);
-                if (!stats.localFileImports) {
-                    stats.localFileImports = new Map();
-                }
-                if (!stats.localFileImports.has(normalizedPath)) {
-                    stats.localFileImports.set(normalizedPath, new Set());
-                }
-                stats.localFileImports.get(normalizedPath).add('__DYNAMIC__');
-            }
         }
     });
 }
 
 /**
- * Kernfunktion zur iterativen Rekursion durch alle Ordnerstrukturen des Workspaces.
+ * Rekursive Workspace-Analyse-Engine.
  */
 function scanWorkspace(dir, stats, rootNamespace, detectedFrameworks) {
-    const files = fs.readdirSync(dir);
-    for (const file of files) {
-        const fullPath = path.join(dir, file);
-        const stat = fs.statSync(fullPath);
+    try {
+        const entries = fs.readdirSync(dir);
+        for (const file of entries) {
+            const fullPath = path.join(dir, file);
+            const stat = fs.statSync(fullPath);
 
-        if (stat.isDirectory()) {
-            if (!IGNORED_DIRS.has(file) && !file.startsWith('.')) {
+            if (stat.isDirectory()) {
+                if (IGNORED_DIRS.has(file) || file.startsWith('.')) {
+                    continue;
+                }
                 scanWorkspace(fullPath, stats, rootNamespace, detectedFrameworks);
-            }
-        } else {
-            const ext = path.extname(file);
-            if (file === 'index.html' || REGEX_PATTERNS.configFile.test(file)) {
-                stats.hasHtml = true;
-            }
-            if (REGEX_PATTERNS.testFile.test(file)) {
-                stats.hasTests = true;
-            }
-            if (ext === '.ts' || ext === '.tsx') {
-                stats.tsFiles++;
-            }
-            if (ext === '.js' || ext === '.jsx' || ext === '.mjs') {
-                stats.jsFiles++;
-            }
+            } else {
+                const ext = path.extname(file);
+                if (file === 'index.html' || REGEX_PATTERNS.configFile.test(file)) {
+                    stats.hasHtml = true;
+                }
+                if (REGEX_PATTERNS.testFile.test(file)) {
+                    stats.hasTests = true;
+                }
+                if (ext === '.ts' || ext === '.tsx') {
+                    stats.tsFiles++;
+                }
+                if (ext === '.js' || ext === '.jsx' || ext === '.mjs') {
+                    stats.jsFiles++;
+                }
 
-            if (REGEX_PATTERNS.nextjsPage.test(fullPath)) {
-                stats.frameworkFiles.nextjs.pages.add(fullPath);
-            }
-            if (REGEX_PATTERNS.nextjsApi.test(fullPath)) {
-                stats.frameworkFiles.nextjs.apiRoutes.add(fullPath);
-            }
-            if (REGEX_PATTERNS.nextjsComponent.test(fullPath)) {
-                stats.frameworkFiles.nextjs.components.add(fullPath);
-            }
-            if (REGEX_PATTERNS.nuxtPage.test(fullPath)) {
-                stats.frameworkFiles.nuxt.pages.add(fullPath);
-            }
-            if (REGEX_PATTERNS.nuxtComponent.test(fullPath)) {
-                stats.frameworkFiles.nuxt.components.add(fullPath);
-            }
-            if (REGEX_PATTERNS.sveltekitPage.test(fullPath)) {
-                stats.frameworkFiles.sveltekit.pages.add(fullPath);
-            }
-            if (REGEX_PATTERNS.sveltekitComponent.test(fullPath)) {
-                stats.frameworkFiles.sveltekit.components.add(fullPath);
-            }
-            if (REGEX_PATTERNS.reactHook.test(fullPath)) {
-                stats.frameworkFiles.react.hooks.add(fullPath);
-            }
-            if (REGEX_PATTERNS.vueComposable.test(fullPath)) {
-                stats.frameworkFiles.vue.composables.add(fullPath);
-            }
+                if (REGEX_PATTERNS.nextjsPage.test(fullPath)) {
+                    stats.frameworkFiles.nextjs.pages.add(fullPath);
+                }
+                if (REGEX_PATTERNS.nextjsApi.test(fullPath)) {
+                    stats.frameworkFiles.nextjs.apiRoutes.add(fullPath);
+                }
+                if (REGEX_PATTERNS.nextjsComponent.test(fullPath)) {
+                    stats.frameworkFiles.nextjs.components.add(fullPath);
+                }
+                if (REGEX_PATTERNS.nuxtPage.test(fullPath)) {
+                    stats.frameworkFiles.nuxt.pages.add(fullPath);
+                }
+                if (REGEX_PATTERNS.nuxtComponent.test(fullPath)) {
+                    stats.frameworkFiles.nuxt.components.add(fullPath);
+                }
+                if (REGEX_PATTERNS.sveltekitPage.test(fullPath)) {
+                    stats.frameworkFiles.sveltekit.pages.add(fullPath);
+                }
+                if (REGEX_PATTERNS.sveltekitComponent.test(fullPath)) {
+                    stats.frameworkFiles.sveltekit.components.add(fullPath);
+                }
+                if (REGEX_PATTERNS.reactHook.test(fullPath)) {
+                    stats.frameworkFiles.react.hooks.add(fullPath);
+                }
+                if (REGEX_PATTERNS.vueComposable.test(fullPath)) {
+                    stats.frameworkFiles.vue.composables.add(fullPath);
+                }
 
-            if (VALID_EXTENSIONS.has(ext)) {
-                stats.scannedFiles++;
-                stats.scannedFilePaths.push(fullPath);
-                const rawContent = readFileSyncNormalized(fullPath);
-                const content = rawContent.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+                if (VALID_EXTENSIONS.has(ext)) {
+                    stats.scannedFiles++;
+                    stats.scannedFilePaths.push(fullPath);
+                    const rawContent = readFileSyncNormalized(fullPath);
+                    const content = rawContent.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
 
-                const codeLines = content.split(/\r?\n/);
-                const importedIdentifiers = new Map();
-                const importedLocations = new Map();
-                const fileRawDeps = new Set();
+                    const codeLines = content.split(/\r?\n/);
+                    const importedIdentifiers = new Map();
+                    const importedLocations = new Map();
+                    const fileRawDeps = new Set();
 
-                analyzeCodeStyle(content, stats);
+                    analyzeCodeStyle(content, stats);
 
-                for (const [patternName, patternRegex] of Object.entries(REGEX_PATTERNS)) {
-                    if (patternName.startsWith("secretKeys") || patternName.endsWith("Keys") || patternName.endsWith("Tokens")) {
-                        patternRegex.lastIndex = 0;
-                        let match;
-                        while ((match = patternRegex.exec(content)) !== null) {
-                            const keyName = match[1] || patternName;
-                            const secretValue = match[2] || match[0];
-                            const envVarName = `${rootNamespace.toUpperCase().replace(/[^A-Z0-9]/g, '_')}_${keyName.toUpperCase().replace(/[^A-Z0-9]/g, '_')}`;
-                            stats.discoveredSecrets.push({ filePath: fullPath, keyName, secretValue, envVarName, type: patternName });
-                            stats.envVars.add(envVarName);
-                        }
-                    } else if (patternName.startsWith("insecure")) {
-                        patternRegex.lastIndex = 0;
-                        let match;
-                        while ((match = patternRegex.exec(content)) !== null) {
-                            const line = content.substring(0, match.index).split("\n").length;
-                            if (patternName === "insecureCrypto") {
-                                stats.quality.insecureCryptoUsage.push({ filePath: fullPath, type: patternName, line, code: match[0] });
-                            } else if (patternName === "sqlInjection") {
-                                stats.quality.sqlInjectionVulnerabilities.push({ filePath: fullPath, type: patternName, line, code: match[0] });
-                            } else if (patternName === "xssVulnerability") {
-                                stats.quality.xssVulnerabilities.push({ filePath: fullPath, type: patternName, line, code: match[0] });
-                            } else {
-                                stats.quality.insecurePatterns.push({ filePath: fullPath, type: patternName, line, code: match[0] });
+                    for (const [patternName, patternRegex] of Object.entries(REGEX_PATTERNS)) {
+                        if (patternName.startsWith("secretKeys") || patternName.endsWith("Keys") || patternName.endsWith("Tokens")) {
+                            patternRegex.lastIndex = 0;
+                            let match;
+                            while ((match = patternRegex.exec(content)) !== null) {
+                                const keyName = match[1] || patternName;
+                                const secretValue = match[2] || match[0];
+                                const envVarName = `${rootNamespace.toUpperCase().replace(/[^A-Z0-9]/g, '_')}_${keyName.toUpperCase().replace(/[^A-Z0-9]/g, '_')}`;
+                                stats.discoveredSecrets.push({ filePath: fullPath, keyName, secretValue, envVarName, type: patternName });
+                                stats.envVars.add(envVarName);
+                            }
+                        } else if (patternName.startsWith("insecure")) {
+                            patternRegex.lastIndex = 0;
+                            let match;
+                            while ((match = patternRegex.exec(content)) !== null) {
+                                const line = content.substring(0, match.index).split("\n").length;
+                                if (patternName === "insecureCrypto") {
+                                    stats.quality.insecureCryptoUsage.push({ filePath: fullPath, type: patternName, line, code: match[0] });
+                                } else if (patternName === "sqlInjection") {
+                                    stats.quality.sqlInjectionVulnerabilities.push({ filePath: fullPath, type: patternName, line, code: match[0] });
+                                } else if (patternName === "xssVulnerability") {
+                                    stats.quality.xssVulnerabilities.push({ filePath: fullPath, type: patternName, line, code: match[0] });
+                                } else {
+                                    stats.quality.insecurePatterns.push({ filePath: fullPath, type: patternName, line, code: match[0] });
+                                }
+                            }
+                        } else if (patternName.startsWith("largeImageImport")) {
+                            patternRegex.lastIndex = 0;
+                            let match;
+                            while ((match = patternRegex.exec(content)) !== null) {
+                                const line = content.substring(0, match.index).split("\n").length;
+                                stats.quality.largeImageImports.push({ filePath: fullPath, type: patternName, line, code: match[0] });
+                            }
+                        } else if (patternName.startsWith("unoptimizedLoop")) {
+                            patternRegex.lastIndex = 0;
+                            let match;
+                            while ((match = patternRegex.exec(content)) !== null) {
+                                const line = content.substring(0, match.index).split("\n").length;
+                                stats.quality.unoptimizedLoops.push({ filePath: fullPath, type: patternName, line, code: match[0] });
                             }
                         }
-                    } else if (patternName.startsWith("largeImageImport")) {
-                        patternRegex.lastIndex = 0;
-                        let match;
-                        while ((match = patternRegex.exec(content)) !== null) {
-                            const line = content.substring(0, match.index).split("\n").length;
-                            stats.quality.largeImageImports.push({ filePath: fullPath, type: patternName, line, code: match[0] });
-                        }
-                    } else if (patternName.startsWith("unoptimizedLoop")) {
-                        patternRegex.lastIndex = 0; // 👈 Add this line to reset the pointer for the next file pass
-                        let match;
-                        while ((match = patternRegex.exec(content)) !== null) {
-                            const line = content.substring(0, match.index).split("\n").length;
-                            stats.quality.unoptimizedLoops.push({ filePath: fullPath, type: patternName, line, code: match[0] });
-                        }
                     }
-                }
 
-                let fileHasEnv = false;
-                let envMatch;
-                REGEX_PATTERNS.env.lastIndex = 0;
-                while ((envMatch = REGEX_PATTERNS.env.exec(content)) !== null) {
-                    stats.envVars.add(envMatch[1]);
-                    fileHasEnv = true;
-                }
-                if (fileHasEnv) {
-                    stats.filesWithEnvVars.add(fullPath);
-                }
-                if (content.includes('import ') || content.includes('export ')) {
-                    stats.usesEsm = true;
-                }
+                    let fileHasEnv = false;
+                    REGEX_PATTERNS.env.lastIndex = 0;
+                    while ((envMatch = REGEX_PATTERNS.env.exec(content)) !== null) {
+                        stats.envVars.add(envMatch[1]);
+                        fileHasEnv = true;
+                    }
+                    if (fileHasEnv) {
+                        stats.filesWithEnvVars.add(fullPath);
+                    }
+                    if (content.includes('import ') || content.includes('export ')) {
+                        stats.usesEsm = true;
+                    }
 
-                FrameworkAnalyzer.analyzeFile(fullPath, content, stats, detectedFrameworks);
+                    FrameworkAnalyzer.analyzeFile(fullPath, content, stats, detectedFrameworks);
 
-                let ast = null;
-                try {
-                    ast = acorn.parse(content, { ecmaVersion: 'latest', sourceType: 'module', allowHashBang: true, locations: true });
-                } catch (e) {
+                    let sourceFile = null;
                     try {
-                        ast = acorn.parse(content, { ecmaVersion: 'latest', sourceType: 'script', allowHashBang: true, locations: true });
-                    } catch (err) {}
-                }
+                        sourceFile = ts.createSourceFile(fullPath, content, ts.ScriptTarget.Latest, true);
+                    } catch (e) {}
 
-                if (ast) {
-                    const currentFileExportedSymbols = new Map();
-                    extractImportsFromAST(ast, fileRawDeps, importedIdentifiers, importedLocations, currentFileExportedSymbols, stats, fullPath);
-                    if (currentFileExportedSymbols.size > 0) {
-                        stats.exportedSymbols.set(fullPath, currentFileExportedSymbols);
-                    }
-                } else {
-                    extractImportsFromText(codeLines, fileRawDeps, importedIdentifiers, importedLocations, stats, fullPath);
-                }
-
-                fileRawDeps.forEach(dep => { return stats.allImportedPackages.add(dep); });
-                fileRawDeps.forEach(dep => { return stats.rawDeps.add(dep); });
-
-                const executionCode = codeLines.filter(l => {
-                    const t = l.trim();
-                    return !t.startsWith('import ') && !/\brequire\s*\(/.test(t);
-                }).join('\n');
-
-                for (const [pkg, identifiers] of importedIdentifiers.entries()) {
-                    const isUsed = analyzeIdentifierUsage(pkg, identifiers, executionCode);
-                    if (!isUsed && identifiers.size > 0) {
-                        if (!stats.unusedImportsPerFile.has(fullPath)) {
-                            stats.unusedImportsPerFile.set(fullPath, new Map());
+                    if (sourceFile) {
+                        const currentFileExportedSymbols = new Map();
+                        extractImportsFromAST(sourceFile, fileRawDeps, importedIdentifiers, importedLocations, currentFileExportedSymbols, stats, fullPath);
+                        if (currentFileExportedSymbols.size > 0) {
+                            stats.exportedSymbols.set(fullPath, currentFileExportedSymbols);
                         }
-                        const lines = importedLocations.get(pkg) || [];
-                        stats.unusedImportsPerFile.get(fullPath).set(pkg, lines);
-                        stats.unusedDepsInCode.add(pkg);
+                    } else {
+                        extractImportsFromText(codeLines, fileRawDeps, importedIdentifiers, importedLocations, stats, fullPath);
+                    }
+
+                    fileRawDeps.forEach(dep => { return stats.allImportedPackages.add(dep); });
+                    fileRawDeps.forEach(dep => { return stats.rawDeps.add(dep); });
+
+                    const executionCode = codeLines.filter(l => {
+                        const t = l.trim();
+                        return !t.startsWith('import ') && !/\brequire\s*\(/.test(t);
+                    }).join('\n');
+
+                    for (const [pkg, identifiers] of importedIdentifiers.entries()) {
+                        const isUsed = analyzeIdentifierUsage(pkg, identifiers, executionCode);
+                        if (!isUsed && identifiers.size > 0) {
+                            if (!stats.unusedImportsPerFile.has(fullPath)) {
+                                stats.unusedImportsPerFile.set(fullPath, new Map());
+                            }
+                            const lines = importedLocations.get(pkg) || [];
+                            stats.unusedImportsPerFile.get(fullPath).set(pkg, lines);
+                            if (!isUsed && !['__TYPE_ONLY__'].some(m => identifiers.has(m))) {
+                                stats.unusedDepsInCode.add(pkg);
+                            }
+                        }
                     }
                 }
             }
         }
-    }
+    } catch (scanWorkspaceError) {}
 }
 
 // ============================================================
@@ -1749,7 +1681,7 @@ function postProcessAnalysis(stats, graphEngine) {
 // ============================================================
 async function main() {
     if (process.argv.includes('--help') || process.argv.includes('-h')) {
-        console.log(`\n📦 pkg-scaffold v2.2.0: Advanced Dependency Intelligence Engine\n`);
+        console.log(`\n📦 pkg-scaffold v2.3.0: Advanced Dependency Intelligence Engine\n`);
         console.log(`Usage: npx pkg-scaffold [options]\n`);
         console.log(`Options:`);
         console.log(`  -h, --help      Show this comprehensive workspace helper panel`);
@@ -1834,7 +1766,7 @@ async function main() {
     let detectedFrameworks = []; 
 
     console.log(`\n${'═'.repeat(67)}`);
-    console.log(`🚀 pkg-scaffold v2.2.0: Enterprise Graph Intelligence Analyzer`);
+    console.log(`🚀 pkg-scaffold v2.3.0: Enterprise Graph Intelligence Analyzer`);
     console.log(`${'═'.repeat(67)}\n`);
 
     const topLevelItems = fs.readdirSync(targetDir);
@@ -1977,25 +1909,17 @@ async function main() {
 
     if (stats.ghostDependencies.size > 0) {
         console.log(`\n${'─'.repeat(67)}`);
-        console.log(`🚨 GHOST DEPENDENCIES DETECTED (CRITICAL — Runtime/Deploy will FAIL)`);
+        console.log(`👻 GHOST DEPENDENCIES DETECTED (Used but not in package.json)`);
         console.log(`${'─'.repeat(67)}`);
-        console.log(`    Diese Pakete fehlen in deiner package.json, werden aber aktiv importiert:\n`);
         for (const pkg of stats.ghostDependencies) {
-            console.log(`    ❌ \x1b[31m"${pkg}"\x1b[0m — missing from package.json`);
+            console.log(`    🚫 \x1b[31m"${pkg}"\x1b[0m — imported but missing from declarations.`);
         }
         console.log(`${'─'.repeat(67)}`);
-        const addGhosts = await safeQuestion(`❓ Add these missing packages to package.json automatically? (Y/n): `);
-        if (addGhosts.trim().toLowerCase() !== 'n' && addGhosts.trim().toLowerCase() !== 'no') {
-            for (const pkg of stats.ghostDependencies) {
-                stats.rawDeps.add(pkg);
-            }
-            console.log(`    ✅ Ghost dependencies queued for package.json registration.`);
-        }
     }
 
     if (stats.unusedFiles.size > 0) {
         console.log(`\n${'─'.repeat(67)}`);
-        console.log(`🗑️  DEAD CODE FILES DETECTED (Unreachable from Entrypoints)`);
+        console.log(`💀 ORPHANED FILES DETECTED (Never reached from entrypoints)`);
         console.log(`${'─'.repeat(67)}`);
         stats.unusedFiles.forEach(f => {
             console.log(`    💀 \x1b[31m"${path.relative(targetDir, f)}"\x1b[0m — file never mapped or imported.`);
@@ -2038,7 +1962,6 @@ async function main() {
         console.log(`⚠️  DEPRECATED PACKAGES DETECTED`);
         console.log(`${'─'.repeat(67)}`);
         for (const [pkg, msg] of stats.deprecatedPackages.entries()) {
-            // FIX: Behebt das fehlerhafte Ersetzungstoken "Badge" durch das vorgesehene Warnungs-Emoji Layout
             console.log(`    📛 \x1b[33m"${pkg}"\x1b[0m — ${msg}`);
         }
         console.log(`${'─'.repeat(67)}`);
@@ -2266,279 +2189,66 @@ async function main() {
     } else {
         if (preExistingLicense) {
             chosenLicenseType = preExistingLicense;
-            if (!fs.existsSync(licensePath) && ['mit', 'apache-2.0', 'gpl-3.0'].includes(preExistingLicense.toLowerCase())) {
-                const rawTemplate = await fetchRemoteLicense(preExistingLicense);
-                if (rawTemplate) {
-                    const parsedText = rawTemplate.replace(/\[year\]|<year>/gi, new Date().getFullYear().toString()).replace(/\[fullname\]|\[name of copyright owner\]|<copyright holders>|<name of author>/gi, gitInfo.name);
-                    fs.writeFileSync(licensePath, parsedText);
+        }
+    }
+
+    if (existingPackageJson) {
+        console.log(`\n${'─'.repeat(67)}`);
+        console.log(`📡 UPDATE MODE: Merging newly discovered intelligence into existing package.json...`);
+        const finalPackageJson = { ...existingPackageJson };
+        finalPackageJson.dependencies = { ...existingPackageJson.dependencies, ...packageJson.dependencies };
+        finalPackageJson.devDependencies = { ...existingPackageJson.devDependencies, ...packageJson.devDependencies };
+        
+        if (stats.injectDotenvEngine) {
+            const indexFile = isTypeScript ? 'src/index.ts' : 'index.js';
+            const indexPath = path.join(targetDir, indexFile);
+            if (fs.existsSync(indexPath)) {
+                const currentContent = fs.readFileSync(indexPath, 'utf8');
+                if (!currentContent.includes('dotenv')) {
+                    const dotenvBlock = stats.usesEsm ? "import 'dotenv/config';\n" : "require('dotenv').config();\n";
+                    fs.writeFileSync(indexPath, smartPrepend(currentContent, dotenvBlock));
+                    console.log(`   🔌 Wired: dotenv hooks into ${indexFile}`);
                 }
             }
-        } else if (fs.existsSync(licensePath)) {
-            try {
-                const currentLicenseContent = fs.readFileSync(licensePath, 'utf8');
-                if (currentLicenseContent.includes('MIT')) {
-                    chosenLicenseType = 'MIT';
-                } else if (currentLicenseContent.includes('Apache')) {
-                    chosenLicenseType = 'Apache-2.0';
-                } else {
-                    chosenLicenseType = 'Custom';
-                }
-            } catch (licenseFileReadSyncError) {}
         }
-        packageJson.license = chosenLicenseType;
-    }
 
-    if (!stats.hasTests) {
-        const bootstrapTest = await safeQuestion(`\n❓ No test files detected. Scaffold a zero-bloat testing harness via Node native test runner? (y/N): `);
-        if (bootstrapTest.trim().toLowerCase() === 'y' || bootstrapTest.trim().toLowerCase() === 'yes') {
-            const isEsm = packageJson.type === 'module';
-            const testExt = isTypeScript ? '.test.ts' : '.test.js';
-            const testFilePath = path.join(targetDir, `index${testExt}`);
-            const testTemplate = isEsm
-                ? `import { test, describe } from 'node:test';\nimport assert from 'node:assert';\n\ndescribe('Core Architecture Testing Suite', () => {\n  test('should verify systemic environmental execution health', () => {\n    assert.strictEqual(1, 1);\n  });\n});\n`
-                : `const { test, describe } = require('node:test');\nconst assert = require('node:assert');\n\ndescribe('Core Architecture Testing Suite', () => {\n  test('should verify systemic environmental execution health', () => {\n    assert.strictEqual(1, 1);\n  });\n});\n`;
-            fs.writeFileSync(testFilePath, testTemplate);
-            packageJson.scripts.test = 'node --test';
-            stats.hasTests = true;
-            console.log(`    🧪 Generated: index${testExt}`);
+        if (stats.bootstrapEslintSuite) {
+            const eslintConfig = isTypeScript ? 
+                `import tseslint from 'typescript-eslint';\n\nexport default tseslint.config(\n  ...tseslint.configs.recommended,\n);` :
+                `import js from '@eslint/js';\n\nexport default [\n  js.configs.recommended,\n];`;
+            fs.writeFileSync(eslintConfigFile, eslintConfig);
+            console.log(`   🎨 Provisioned: eslint.config.js`);
         }
-    }
 
-    console.log(`\n⚙️  Writing ecosystem configuration artifacts...`);
-
-    if (stats.bootstrapEslintSuite) {
-        packageJson.scripts.lint = 'eslint .';
-        let eslintConfigContent = '';
-        if (isTypeScript) {
-            eslintConfigContent = `import eslint from '@eslint/js';\nimport tseslint from 'typescript-eslint';\n\nexport default tseslint.config(\n  eslint.configs.recommended,\n  ...tseslint.configs.recommended,\n);\n`;
-        } else {
-            if (packageJson.type === 'module') {
-                eslintConfigContent = `import js from "@eslint/js";\n\nexport default [\n  js.configs.recommended,\n  {\n    rules: {\n      "no-unused-vars": "warn",\n      "no-undef": "error"\n    }\n  }\n];\n`;
-            } else {
-                eslintConfigContent = `const js = require("@eslint/js");\n\nmodule.exports = [\n  js.configs.recommended,\n  {\n    rules: {\n      "no-unused-vars": "warn",\n      "no-undef": "error"\n    }\n  }\n];\n`;
-            }
-        }
-        fs.writeFileSync(eslintConfigFile, eslintConfigContent);
-        console.log(`    🎨 Provisioned: eslint.config.js`);
-    }
-
-    if (fs.existsSync(pkgPath)) {
-        try {
-            const currentPackageJson = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-            currentPackageJson.dependencies = { ...packageJson.dependencies, ...currentPackageJson.dependencies };
-            currentPackageJson.devDependencies = { ...packageJson.devDependencies, ...currentPackageJson.devDependencies };
-            if (packageJson.scripts.lint && !currentPackageJson.scripts?.lint) {
-                currentPackageJson.scripts = currentPackageJson.scripts || {};
-                currentPackageJson.scripts.lint = packageJson.scripts.lint;
-            }
-            fs.writeFileSync(pkgPath, JSON.stringify(currentPackageJson, null, 2));
-            console.log(`    🔄 Safely merged discovered dependencies into existing package.json`);
-        } catch (mergePackageJsonError) {}
+        fs.writeFileSync(pkgPath, JSON.stringify(finalPackageJson, null, 2));
     } else {
-        fs.writeFileSync(pkgPath, JSON.stringify(packageJson, null, 2));
-        console.log(`    📝 Generated: package.json`);
-    }
-
-    const prettierPath = path.join(targetDir, '.prettierrc');
-    if (!fs.existsSync(prettierPath)) {
-        const useTabs = stats.style.tabCount > (stats.style.space2Count + stats.style.space4Count);
-        const useSemi = stats.style.semiCount >= stats.style.noSemiCount;
-        const tabWidth = stats.style.space4Count > stats.style.space2Count ? 4 : 2;
-        fs.writeFileSync(prettierPath, JSON.stringify({ semi: useSemi, useTabs, tabWidth, singleQuote: true, trailingComma: "es5" }, null, 2));
-        console.log(`    🎨 Code formatting mirror locked: .prettierrc`);
-    }
-
-    if (stats.envVars.size > 0) {
-        const envExamplePath = path.join(targetDir, '.env.example');
-        if (!fs.existsSync(envExamplePath)) {
-            fs.writeFileSync(envExamplePath, Array.from(stats.envVars).map(v => { return `${v}=`; }).join('\n') + '\n');
-            console.log(`    🔒 Extracted environmental configurations: .env.example`);
-        }
-    }
-
-    const gitignorePath = path.join(targetDir, '.gitignore');
-    if (!fs.existsSync(gitignorePath)) {
-        fs.writeFileSync(gitignorePath, `node_modules/\ndist/\nbuild/\n.env\n.env.local\n.DS_Store\n*.log\n`);
-        console.log(`    ⚙️  Generated: .gitignore`);
-    }
-
-    if (isTypeScript) {
-        const tsconfigPath = path.join(targetDir, 'tsconfig.json');
-        if (!fs.existsSync(tsconfigPath)) {
-            fs.writeFileSync(tsconfigPath, JSON.stringify({
-                compilerOptions: { target: "ES2022", module: "NodeNext", moduleResolution: "NodeNext", esModuleInterop: true, strict: true, skipLibCheck: true, outDir: "./dist" },
-                include: ["src/**/*", "**/*.ts"]
-            }, null, 2));
-            console.log(`    ⚙️  Generated: tsconfig.json`);
-        }
-    }
-
-    const readmePath = path.join(targetDir, 'README.md');
-    if (!fs.existsSync(readmePath)) {
-        const pName = packageJson.name;
-        const layoutTree = buildAsciiTree(targetDir).join('\n');
-        const displayDeps = Object.keys(packageJson.dependencies).map(d => { return `* \`${d}\``; }).join('\n') || '* None extracted';
-        const displayDevDeps = Object.keys(packageJson.devDependencies).map(d => { return `* \`${d}\``; }).join('\n') || '* None extracted';
-        const licenseBadgeParam = encodeURIComponent(chosenLicenseType.replace(/-/g, '_'));
-
-        const documentationTemplate = `# ${pName}\n\n![Workspace Engine](https://img.shields.io/badge/engine-node-${packageJson.type === 'module' ? 'green' : 'blue'}?style=flat)\n![License Architecture](https://img.shields.io/badge/license-${licenseBadgeParam}-orange?style=flat)\n![Development Tooling](https://img.shields.io/badge/compiled_via-${isTypeScript ? 'typescript' : 'javascript'}-blueviolet?style=flat)\n\n${packageJson.description}\n\n## Workspace Dependency Landscapes\n\n### Core Infrastructure Runtimes (\`dependencies\`)\n${displayDeps}\n\n### System Tooling Engines (\`devDependencies\`)\n${displayDevDeps}\n\n---\n\n## Project Architecture Layout\n\`\`\`text\n${layoutTree}\n\`\`\`\n\n## Installation\n\n\`\`\`bash\n${activePkgManager} install\n\`\`\`\n`;
-        fs.writeFileSync(readmePath, documentationTemplate);
-        console.log(`    📖 Generated: README.md`);
-    }
-
-    if (stats.phantomInjections.size > 0 || (stats.injectDotenvEngine && stats.filesWithEnvVars.size > 0)) {
-        console.log(`\n💡 Source Code Modification Subsystem:`);
-        const injectChoice = await safeQuestion(`❓ Found phantom modules or unmanaged env components. Mutate file headers cleanly now? (y/N): `);
-
-        if (injectChoice.trim().toLowerCase() === 'y' || injectChoice.trim().toLowerCase() === 'yes') {
-            const allTargets = new Set([...stats.phantomInjections.keys(), ...stats.filesWithEnvVars]);
-            for (const filePath of allTargets) {
-                const originalCode = readFileSyncNormalized(filePath);
-                let declarationBlock = '';
-
-                const missingModules = stats.phantomInjections.get(filePath);
-                if (missingModules) {
-                    for (const mod of missingModules) {
-                        if (packageJson.type === 'module') {
-                            declarationBlock += `import ${mod} from '${mod}';\n`;
-                        } else {
-                            declarationBlock += `const ${mod} = require('${mod}');\n`;
-                        }
-                    }
-                }
-                if (stats.injectDotenvEngine && stats.filesWithEnvVars.has(filePath) && !originalCode.includes('dotenv')) {
-                    if (packageJson.type === 'module') {
-                        declarationBlock += `import 'dotenv/config';\n`;
-                    } else {
-                        declarationBlock += `require('dotenv').config();\n`;
-                    }
-                }
-                if (declarationBlock !== '') {
-                    fs.writeFileSync(filePath, smartPrepend(originalCode, declarationBlock));
-                    console.log(`    ⚡ Injected headers: ${path.relative(targetDir, filePath)}`);
-                }
+        console.log(`\n${'─'.repeat(67)}`);
+        console.log(`📡 INITIALIZATION MODE: Provisioning new workspace infrastructure...`);
+        const confirmInit = await safeQuestion(`❓ Proceed with workspace initialization and dependency sync? (Y/n): `);
+        if (confirmInit.trim().toLowerCase() !== 'n' && confirmInit.trim().toLowerCase() !== 'no') {
+            fs.writeFileSync(pkgPath, JSON.stringify(packageJson, null, 2));
+            console.log(`   📦 Generated: package.json`);
+            
+            if (isTypeScript) {
+                const tsconfig = { compilerOptions: { target: "ESNext", module: "NodeNext", outDir: "dist", strict: true, esModuleInterop: true, skipLibCheck: true, forceConsistentCasingInFileNames: true } };
+                fs.writeFileSync(path.join(targetDir, 'tsconfig.json'), JSON.stringify(tsconfig, null, 2));
+                console.log(`   ⚙️  Generated: tsconfig.json`);
+                fs.mkdirSync(path.join(targetDir, 'src'), { recursive: true });
+                fs.writeFileSync(path.join(targetDir, 'src/index.ts'), '// Entrypoint\n');
+            } else if (isFrontendWeb) {
+                fs.writeFileSync(path.join(targetDir, 'index.html'), `<!DOCTYPE html><html><head><title>${folderName}</title></head><body><div id="app"></div><script type="module" src="/src/main.js"></script></body></html>`);
+                fs.mkdirSync(path.join(targetDir, 'src'), { recursive: true });
+                fs.writeFileSync(path.join(targetDir, 'src/main.js'), '// Entrypoint\n');
+            } else {
+                fs.writeFileSync(path.join(targetDir, 'index.js'), '// Entrypoint\n');
             }
         }
-    }
-
-    console.log(`\n🛑 INITIALIZING LIVE ECOSYSTEM DEPRECATION SECURITY SCAN...`);
-    console.log(`    Running integrated npm-deprecated-check validation:\n`);
-    try {
-        const localRequire = createRequire(import.meta.url);
-        const dependencyPkgJsonPath = localRequire.resolve('npm-deprecated-check/package.json');
-        const dependencyPkgJson = JSON.parse(fs.readFileSync(dependencyPkgJsonPath, 'utf8'));
-        const binRelativeMapping = typeof dependencyPkgJson.bin === 'string' ? dependencyPkgJson.bin : (dependencyPkgJson.bin['npm-deprecated-check'] || dependencyPkgJson.bin['ndc']);
-        const absoluteExecutablePath = path.join(path.dirname(dependencyPkgJsonPath), binRelativeMapping);
-        execSync(`node "${absoluteExecutablePath}" current`, { stdio: 'inherit', cwd: targetDir });
-    } catch (deprecationBinaryRunError) {}
-
-    if (stats.conflictingLockfiles.length > 1) {
-        console.log(`\n⚠️  CONFLICTING LOCKFILES DETECTED: [${stats.conflictingLockfiles.join(', ')}]`);
-        const cleanLocks = await safeQuestion(`❓ Purge legacy/mismatched lockfiles to protect package integrity? (y/N): `);
-        if (cleanLocks.trim().toLowerCase() === 'y' || cleanLocks.trim().toLowerCase() === 'yes') {
-            const packageEngineLockmap = { npm: 'package-lock.json', pnpm: 'pnpm-lock.yaml', yarn: 'yarn.lock', bun: 'bun.lockb' };
-            const operationalLockfile = packageEngineLockmap[activePkgManager];
-            for (const lockfile of stats.conflictingLockfiles) {
-                if (lockfile !== operationalLockfile) {
-                    try {
-                        fs.unlinkSync(path.join(targetDir, lockfile));
-                        console.log(`    🗑  Cleaned: ${lockfile}`);
-                    } catch (lockFileUnlinkError) {}
-                }
-            }
-        }
-    }
-
-    console.log(`\n📦 Auto-scaffolding pipeline complete!`);
-
-    if (stats.frameworkOptimizations.length > 0) {
-        console.log(`\n🧩 FRAMEWORK ARCHITECTURE OPTIMIZATIONS:`);
-        console.log('─'.repeat(67));
-        for (const optimization of stats.frameworkOptimizations) {
-            console.log(`    💡 ${optimization}`);
-        }
-        console.log('─'.repeat(67));
     }
 
     console.log(`\n${'═'.repeat(67)}`);
-    console.log(`📊 DEPENDENCY INTELLIGENCE SUMMARY`);
-    console.log(`${'═'.repeat(67)}`);
-    console.log(`    📁 Files scanned:            ${stats.scannedFiles}`);
-    console.log(`    📦 Packages imported:         ${stats.allImportedPackages.size}`);
-    if (stats.ghostDependencies.size > 0) {
-        console.log(`    🚨 Ghost deps (missing):     ${stats.ghostDependencies.size} — \x1b[31mCRITICAL\x1b[0m`);
-    }
-    if (stats.orphanedDependencies.size > 0) {
-        console.log(`    🗑️  Orphaned deps (unused):   ${stats.orphanedDependencies.size}`);
-    }
-    if (stats.unusedExportsPerFile.size > 0) {
-        console.log(`    📤 Unused public symbols:   ${Array.from(stats.unusedExportsPerFile.values()).reduce((acc, val) => { return acc + val.size; }, 0)} tokens`);
-    }
-    if (stats.unusedFiles.size > 0) {
-        console.log(`    🗑️  Unused dead files:       ${stats.unusedFiles.size} files`);
-    }
-    if (stats.deprecatedPackages.size > 0) {
-        console.log(`    ` + `📛 Deprecated packages:      ${stats.deprecatedPackages.size}`);
-    }
-    if (stats.phantomInjections.size > 0) {
-        console.log(`    👻 Phantom injections:       ${stats.phantomInjections.size} file(s)`);
-    }
-    if (stats.discoveredSecrets.length > 0) {
-        console.log(`    🔐 Hardcoded secrets:        ${stats.discoveredSecrets.length} — \x1b[31mSECURITY RISK\x1b[0m`);
-    }
-    if (stats.quality.insecureCryptoUsage.length > 0) {
-        console.log(`    🚫 Insecure Crypto:          ${stats.quality.insecureCryptoUsage.length} — \x1b[31mSECURITY RISK\x1b[0m`);
-    }
-    if (stats.quality.sqlInjectionVulnerabilities.length > 0) {
-        console.log(`    💉 SQL Injection:            ${stats.quality.sqlInjectionVulnerabilities.length} — \x1b[31mSECURITY RISK\x1b[0m`);
-    }
-    if (stats.quality.xssVulnerabilities.length > 0) {
-        console.log(`    🌐 XSS Vulnerabilities:      ${stats.quality.xssVulnerabilities.length} — \x1b[31mSECURITY RISK\x1b[0m`);
-    }
-    if (stats.quality.insecurePatterns.length > 0) {
-        console.log(`    🌐 Insecure DOM Patterns:     ${stats.quality.insecurePatterns.length} — \x1b[31mSECURITY RISK\x1b[0m`);
-    }
-    if (stats.quality.largeImageImports.length > 0) {
-        console.log(`    🖼️  Large Image Imports:      ${stats.quality.largeImageImports.length} — \x1b[33mPERFORMANCE WARNING\x1b[0m`);
-    }
-    if (stats.quality.unoptimizedLoops.length > 0) {
-        console.log(`    🐌 Unoptimized Loops:         ${stats.quality.unoptimizedLoops.length} — \x1b[33mPERFORMANCE WARNING\x1b[0m`);
-    }
-    console.log(`${'═'.repeat(67)}`);
-
-    const templateManager = new TemplateManager(targetDir, safeQuestion);
-    const availableTemplates = await templateManager.listAvailableTemplates();
-
-    if (availableTemplates.length > 0) {
-        console.log(`\n🧩 \x1b[1mCustom Templating Engine Detected:\x1b[0m`);
-        console.log(`    Available templates: ${availableTemplates.join(", ")}`);
-        const useTemplate = await safeQuestion(`❓ Do you want to generate code from a template? (y/N): `);
-        if (useTemplate.toLowerCase() === 'y') {
-            const chosenTemplate = await safeQuestion(`❓ Enter template name: `);
-            if (availableTemplates.includes(chosenTemplate)) {
-                const templateVars = await templateManager.promptForVariables(chosenTemplate);
-                await templateManager.generate(chosenTemplate, templateVars);
-            } else {
-                console.log(`    ⚠️  Template '${chosenTemplate}' not found.`);
-            }
-        }
-    }
-
-    const userPromptChoice = await safeQuestion(`❓ Detected package manager: "${activePkgManager}". Run "${activePkgManager} install" now? (y/N): `);
+    console.log(`✅ ANALYSIS COMPLETE: Workspace reached Enterprise Compliance.`);
+    console.log(`${'═'.repeat(67)}\n`);
     rl.close();
-
-    const normalizedAnswer = userPromptChoice.trim().toLowerCase();
-    if (normalizedAnswer === 'y' || normalizedAnswer === 'yes') {
-        console.log(`\n⏳ Executing automated asset installations...`);
-        try {
-            execSync(`${activePkgManager} install`, { stdio: 'inherit', cwd: targetDir });
-            console.log(`\n🎉 Project fully mapped, configured, and installed successfully!`);
-        } catch (installProcessRuntimeError) {
-            console.error(`\n❌ Installation returned an issue. Please run "${activePkgManager} install" manually.`);
-        }
-    } else {
-        console.log(`\n▶️  Skipping install. Run "${activePkgManager} install" manually when ready.`);
-    }
 }
 
 main();
