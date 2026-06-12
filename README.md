@@ -1,8 +1,9 @@
 # pkg-scaffold
 
-[![NPM Version](https://img.shields.io/npm/v/pkg-scaffold.svg?style=flat&color=brightgreen)](https://www.npmjs.com/package/pkg-scaffold)
+[![NPM Version](https://img.shields.io/npm/v/pkg-scaffold.svg?style=flat&color=brightgreen?logo=npm)](https://www.npmjs.com/package/pkg-scaffold)
 [![License](https://img.shields.io/npm/l/pkg-scaffold.svg?style=flat&color=blue)](https://www.npmjs.com/package/pkg-scaffold)
-[![NPM Downloads](https://img.shields.io/npm/dm/pkg-scaffold.svg?style=flat&color=blueviolet)](https://www.npmjs.com/package/pkg-scaffold)
+[![NPM Downloads](https://img.shields.io/npm/d18m/pkg-scaffold?style=flat&color=blueviolet)](https://www.npmjs.com/package/pkg-scaffold)
+[![Last Updated](https://img.shields.io/npm/last-update/pkg-scaffold)](https://www.npmjs.com/package/pkg-scaffold)
 
 `pkg-scaffold` is a zero-config, intelligent **Workspace Genesis Engine**. Instead of forcing you to configure infrastructure *before* writing code, it crawls your raw scratchpads or prototypes, diagnoses the ecosystem, automatically generates structural runtime configurations, repairs unimported statements, provisions legal licenses from remote registries, and runs deep compatibility audits.
 
