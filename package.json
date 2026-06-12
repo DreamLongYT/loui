@@ -5,7 +5,7 @@
   "type": "module",
   "main": "index.js",
   "bin": {
-    "pkg-scaffold": "./index.js"
+    "pkg-scaffold": "./bin/cli.js"
   },
   "scripts": {
     "start": "node bin/cli.js",
