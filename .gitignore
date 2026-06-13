@@ -7,4 +7,5 @@ yarn-error.log*
 .env
 dist/
 build/
-.vitepress/
+!docs/.vitepress/config.mts
+!docs/.vitepress/theme/
