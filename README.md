@@ -1,126 +1,41 @@
-# 📦 pkg-scaffold v3.1.2
+# README
+
+![Logo](./logo.png)
 
 **The Ultimate Enterprise Codebase Janitor: OXC-Powered, Type-Aware, and Self-Healing.**
 
-[![npm version](https://img.shields.io/npm/v/pkg-scaffold.svg?style=flat&color=CB3837)](https://www.npmjs.com/package/pkg-scaffold)
-[![License](https://img.shields.io/badge/license-MIT-orange.svg?style=flat)](LICENSE)
-[![Performance](https://img.shields.io/badge/performance-OXC--Inside-blueviolet.svg?style=flat)](https://oxc.rs/)
+![Version](https://img.shields.io/badge/version-3.1.3-blue.svg) ![License](https://img.shields.io/badge/license-MIT-green.svg) ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/DreamLongYT/pkg-scaffold/npm-publish.yml?branch=main) ![Performance](https://img.shields.io/badge/performance-OXC--Inside-blueviolet.svg)
 
-`pkg-scaffold` is the industry's most advanced codebase optimization engine. Version 3.1.0 marks a massive leap forward, outperforming Knip v6 with a hybrid **OXC + TypeScript** architecture. It doesn't just find dead code—it safely prunes it and validates your project's integrity through a unique **Self-Healing Loop**.
+`pkg-scaffold` is the industry's most advanced codebase optimization engine. Version 3.1.3 marks a massive leap forward, outperforming Knip v6 with a hybrid **OXC + TypeScript** architecture. It doesn't just find dead code—it safely prunes it and validates your project's integrity through a unique **Self-Healing Loop**.
 
----
+## Features
 
-## 🚀 Why pkg-scaffold@3.1.2?
+- **Extreme Speed with OXC**: By integrating the Rust-based OXC parser, `pkg-scaffold` achieves a 2-4x performance boost.
+- **True Type-Aware Analysis**: Uses the full TypeScript Compiler API to resolve types across your entire project.
+- **Automated Self-Healing**: Identifies unused code, removes it, and validates the change through tests.
+- **Modular Plugin Ecosystem**: Supports local configurations and custom plugins, including Knip compatibility.
 
-### 1. Extreme Speed with OXC
-By integrating the Rust-based **OXC (Oxc-Parser & Oxc-Resolver)**, pkg-scaffold v3.1.0 achieves a **2-4x performance boost** over previous versions, matching and often exceeding the speed of Knip v6 for single-pass analysis.
+## Getting Started
 
-### 2. True Type-Aware Analysis
-Unlike basic linters, pkg-scaffold uses the full **TypeScript Compiler API** to resolve types across your entire project. This ensures that implicitly implemented interfaces, extended objects, and global ambient overrides are correctly tracked, reducing false positives to near zero.
+### Installation
 
-### 3. Automated Self-Healing (The "Fix" Loop)
-This is the "Knip-Killer" feature. pkg-scaffold doesn't just give you a report; it:
-1.  **Identifies** unused code.
-2.  **Prunes** it automatically.
-3.  **Validates** the change by running your test suite.
-4.  **Self-Heals** by rolling back immediately if a test fails.
-
-### 4. Modular Plugin Ecosystem
-With a dedicated `/pkg-scaffold` directory, you can now manage local configurations and custom plugins. We even support **Knip-style plugins**, allowing you to leverage the existing ecosystem while using our superior engine.
-
----
-
-## ⚔️ Competitive Analysis: pkg-scaffold vs. The Rest
-
-| Feature | **pkg-scaffold v3.1.0** | Knip v6 | Depcheck |
-| :--- | :---: | :---: | :---: |
-| **Parsing Engine** | ⚡ **OXC (Rust) + Hybrid TS** | ⚡ OXC (Rust) | ⚠️ Regex/Loose |
-| **Type-Awareness** | ✅ **Full Program API** | ✅ Yes | ❌ No |
-| **Automated Pruning** | ✅ **Native & Safe** | ⚠️ Experimental | ❌ No |
-| **Self-Healing Loop** | ✅ **Yes (Auto-Rollback)** | ❌ No | ❌ No |
-| **Plugin Architecture** | ✅ **Modular + Knip-Compat** | ✅ Built-in Only | ❌ No |
-| **Namespace Tracking** | ✅ **Sub-Symbol Level** | ✅ Yes | ❌ No |
-| **Security Audit** | ✅ **Dynamic Registry Check** | ❌ No | ❌ No |
-
-### Where Knip.dev is still strong:
-- **Maturity:** Knip has a larger set of pre-configured community plugins (150+).
-- **Ecosystem:** More integrations with niche tools and legacy build systems.
-*However, pkg-scaffold's Knip-compatibility layer is designed to bridge this gap.*
-
----
-
-## 🛠️ Installation & Usage
-
-### 1. Add to your project
 ```bash
-npm install --save-dev pkg-scaffold
+npm install -g pkg-scaffold
 ```
 
-### 2. Configure (Optional)
-Create a `pkg-scaffold/config.json` to customize your experience:
-```json
-{
-  "interface": "CLI",
-  "options": {
-    "fastMode": true,
-    "selfHealing": true
-  }
-}
+### Usage
+
+```bash
+pkg-scaffold init my-project
+pkg-scaffold --fix --test-command 'npm test'
 ```
 
-### 3. Run the Engine
-Add this to your `package.json` scripts:
-```json
-"scripts": {
-  "pkg-scaffold:run": "pkg-scaffold --fix --test-command 'npm test'"
-}
-```
+## Documentation
 
----
+- [home](https://dreamlongyt.github.io/pkg-scaffold/)
+- [guide](https://dreamlongyt.github.io/pkg-scaffold/guide)
+- [references](https://dreamlongyt.github.io/pkg-scaffold/reference)
 
-## 📂 Project Structure
-
-- **`/pkg-scaffold/config.json`**: Your local settings (CLI/GUI, Plugin Toggles).
-- **`/pkg-scaffold/plugins/`**: Drop your custom or Knip-style plugins here.
-- **`/docs/`**: Full [Plugin Development Guide](https://dreamlongyt.github.io/pkg-scaffold/).
-
----
-
-## 🛡️ Suppression
-
-Protect specific code from the janitor:
-
-```javascript
-/**
- * @scaffold-suppress
- */
-export const internalHelper = () => { /* Safe from pruning */ };
-```
-
----
-## Depencies
-```json
-"ansis": "^3.0.0",
-"commander": "^12.0.0",
-"enhanced-resolve": "^5.16.0",
-"execa": "^8.0.1",
-"oxc-parser": "^0.135.0",
-"oxc-resolver": "^11.20.0",
-"ramda": "^0.29.1",
-"yocto-spinner": "^0.1.0"
-```
----
-## DevDepencies
-```json
-"@types/node": "^25.9.3",
-"express": "^5.2.1",
-"knip": "^6.16.1", //Used to make Plugins from knip compitable with the code
-"lodash": "^4.18.1", //For Analysing
-"typescript": "^6.0.3", //For Analysing
-"vitepress": "^1.6.4" //For the Documentation
-```
----
-
-## 📜 License
+## License
 
 MIT © DreamLongYT & The Enhanced Contributors.

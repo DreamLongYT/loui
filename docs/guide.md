@@ -100,3 +100,21 @@ Plugins have access to the `context`, allowing them to trigger specific engine b
 ### Knip Compatibility
 
 If you are porting a Knip plugin, ensure the export mappings align with the `getRoutePatterns()` and `getRequiredSystemContracts()` methods to ensure full compatibility with the pkg-scaffold resolution graph.
+
+### Default Plugins
+
+*   **NextJsPlugin**: Optimizes Next.js projects, detecting unused pages and API routes.
+*   **GenericPlugins**: Basic optimizations for standard JavaScript/TypeScript projects.
+
+### Disabling Plugins
+
+In the `pkg-scaffold/config.json`, plugins can be controlled under the `plugins` key:
+
+```json
+{
+  "plugins": {
+    "nextjs": false,
+    "typescript": true
+  }
+}
+```
