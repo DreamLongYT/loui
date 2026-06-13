@@ -13,7 +13,7 @@
     "test": "echo \"Error: no test specified\" && exit 0",
     "test:stability": "npm run test",
     "docs:dev": "vitepress dev docs",
-    "docs:build": "vitepress build docs",
+    "docs:build": "vitepress build docs && cp docs/sitemap.xml docs/.vitepress/dist/ && cp docs/robots.txt docs.vitepress/dist",
     "docs:preview": "vitepress preview docs"
   },
   "keywords": [
