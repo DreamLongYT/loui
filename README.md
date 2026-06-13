@@ -1,4 +1,4 @@
-# 📦 pkg-scaffold v3.1.0
+# 📦 pkg-scaffold v3.1.1
 
 **The Ultimate Enterprise Codebase Janitor: OXC-Powered, Type-Aware, and Self-Healing.**
 
@@ -10,7 +10,7 @@
 
 ---
 
-## 🚀 Why pkg-scaffold v3.1.0?
+## 🚀 Why pkg-scaffold@3.1.1?
 
 ### 1. Extreme Speed with OXC
 By integrating the Rust-based **OXC (Oxc-Parser & Oxc-Resolver)**, pkg-scaffold v3.1.0 achieves a **2-4x performance boost** over previous versions, matching and often exceeding the speed of Knip v6 for single-pass analysis.
@@ -82,7 +82,7 @@ Add this to your `package.json` scripts:
 
 - **`/pkg-scaffold/config.json`**: Your local settings (CLI/GUI, Plugin Toggles).
 - **`/pkg-scaffold/plugins/`**: Drop your custom or Knip-style plugins here.
-- **`/docs/`**: Full [Plugin Development Guide](./docs/guide.md#plugin-development).
+- **`/docs/`**: Full [Plugin Development Guide](https://dreamlongyt.github.io/pkg-scaffold/).
 
 ---
 

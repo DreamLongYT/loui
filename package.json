@@ -1,6 +1,6 @@
 {
   "name": "pkg-scaffold",
-  "version": "3.1.0",
+  "version": "3.1.1",
   "description": "The ultimate enterprise-grade codebase janitor. Faster than Knip v6 with OXC integration, type-aware analysis, and self-healing capabilities.",
   "type": "module",
   "main": "index.js",
@@ -42,7 +42,7 @@
   "bugs": {
     "url": "https://github.com/DreamLongYT/pkg-scaffold/issues"
   },
-  "homepage": "https://github.com/DreamLongYT/pkg-scaffold#readme",
+  "homepage": "https://dreamlongyt.github.io/pkg-scaffold/",
   "dependencies": {
     "ansis": "^3.0.0",
     "commander": "^12.0.0",

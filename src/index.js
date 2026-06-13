@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * 📦 pkg-scaffold v3.0.0: Unified Architectural Refactoring Orchestrator
+ * 📦 pkg-scaffold v3.1.1: Unified Architectural Refactoring Orchestrator
  * ============================================================================
  * Main execution bridge managing multi-pass compilation cycles, semantic cross-linking,
  * supply-chain validation audits, and automated git self-healing rollbacks.

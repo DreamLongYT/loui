@@ -2,7 +2,7 @@ import { defineConfig } from 'vitepress'
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
-  title: "pkg-scaffold Docs",
+  title: "pkg-scaffold Documentation",
   base: '/pkg-scaffold/',
   description: "An advanced, AST-driven dependency resolution, refactoring, and self-healing engine.",
   themeConfig: {
@@ -29,7 +29,8 @@ export default defineConfig({
     ],
 
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/DreamLongYT/pkg-scaffold' }
+      { icon: 'github', link: 'https://github.com/DreamLongYT/pkg-scaffold' },
+      { icon: 'npm', link: 'https://www.npmjs.com/package/pkg-scaffold'}
     ],
 
     footer: {
