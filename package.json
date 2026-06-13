@@ -1,6 +1,6 @@
 {
   "name": "pkg-scaffold",
-  "version": "3.1.1",
+  "version": "3.1.2",
   "description": "The ultimate enterprise-grade codebase janitor. Faster than Knip v6 with OXC integration, type-aware analysis, and self-healing capabilities.",
   "type": "module",
   "main": "index.js",

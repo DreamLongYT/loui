@@ -1,4 +1,4 @@
-# 📦 pkg-scaffold v3.1.1
+# 📦 pkg-scaffold v3.1.2
 
 **The Ultimate Enterprise Codebase Janitor: OXC-Powered, Type-Aware, and Self-Healing.**
 
@@ -10,7 +10,7 @@
 
 ---
 
-## 🚀 Why pkg-scaffold@3.1.1?
+## 🚀 Why pkg-scaffold@3.1.2?
 
 ### 1. Extreme Speed with OXC
 By integrating the Rust-based **OXC (Oxc-Parser & Oxc-Resolver)**, pkg-scaffold v3.1.0 achieves a **2-4x performance boost** over previous versions, matching and often exceeding the speed of Knip v6 for single-pass analysis.
@@ -97,6 +97,28 @@ Protect specific code from the janitor:
 export const internalHelper = () => { /* Safe from pruning */ };
 ```
 
+---
+## Depencies
+```json
+"ansis": "^3.0.0",
+"commander": "^12.0.0",
+"enhanced-resolve": "^5.16.0",
+"execa": "^8.0.1",
+"oxc-parser": "^0.135.0",
+"oxc-resolver": "^11.20.0",
+"ramda": "^0.29.1",
+"yocto-spinner": "^0.1.0"
+```
+---
+## DevDepencies
+```json
+"@types/node": "^25.9.3",
+"express": "^5.2.1",
+"knip": "^6.16.1", //Used to make Plugins from knip compitable with the code
+"lodash": "^4.18.1", //For Analysing
+"typescript": "^6.0.3", //For Analysing
+"vitepress": "^1.6.4" //For the Documentation
+```
 ---
 
 ## 📜 License

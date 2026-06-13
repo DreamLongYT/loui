@@ -1,14 +1,15 @@
 # CLI Reference
 
-This page lists all available command-line options for `pkg-scaffold`.
+This page lists all available command-line options for `pkg-scaffold v3.1.1`.
 
 ```text
 Usage: pkg-scaffold [options]
-Enterprise-Grade AST Syntax Refactoring & Self-Healing Engine
+Ultimate Enterprise Codebase Janitor & Self-Healing Engine
 
 Options:
   -V, --version             output the version number
-  -c, --cwd <path>          Specify the execution context root directory (default: "/home/ubuntu/test-project")
+  -c, --cwd <path>          Specify the execution context root directory
+  -r, --run                 Execute the primary operational pipeline loop (Required to start analysis)
   --fix                     Enable atomic code updates, structural file pruning, and active type sanitization (default: true)
   --no-fix                  Disable direct file manipulation modifications (dry-run reporting mode)
   --tsconfig <filename>     Specify path to custom layout configurations (default: "tsconfig.json")
@@ -26,6 +27,9 @@ Displays the current version of `pkg-scaffold`.
 
 ### `-c`, `--cwd <path>`
 Defines the root directory where `pkg-scaffold` should be executed. By default, this is the current working directory.
+
+### `-r`, `--run`
+**New in v3.1.0.** This flag is required to initiate the actual analysis and refactoring process. If omitted, the CLI will enter interactive onboarding mode or display configuration status.
 
 ### `--fix`
 Activates the mode for atomic code updates, structural file pruning, and active type sanitization. This is the mode in which `pkg-scaffold` makes actual changes to your code.
