@@ -41,7 +41,7 @@
   "bugs": {
     "url": "https://github.com/DreamLongYT/pkg-scaffold/issues"
   },
-  "homepage": "https://github.com/DreamLongYT/pkg-scaffold#readme",
+  "homepage": "https://dreamlongyt.github.io/pkg-scaffold/",
   "dependencies": {
     "ansis": "^3.0.0",
     "commander": "^12.0.0",
