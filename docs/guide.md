@@ -1,8 +1,8 @@
-# Getting Started with pkg-scaffold v3.3.0
+# Getting Started with pkg-scaffold v3.2.1
 
 ## Overview
 
-pkg-scaffold v3.3.0 is a major update focused on solving the most critical issues currently facing the JavaScript/TypeScript ecosystem—many of which remain open in competing tools like Knip.
+pkg-scaffold v3.2.1 is a major update focused on solving the most critical issues currently facing the JavaScript/TypeScript ecosystem—many of which remain open in competing tools like Knip.
 
 ## Why v3.3.0?
 

@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * Circular Dependency Detector for pkg-scaffold v3.3.0
+ * Circular Dependency Detector for pkg-scaffold v3.2.1
  * 
  * Copyright (C) 2026 DreamLongYT
  * Licensed under the Apache License, Version 2.0.

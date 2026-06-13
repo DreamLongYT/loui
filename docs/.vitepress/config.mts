@@ -1,7 +1,7 @@
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
-  title: "pkg-scaffold v3.3.0 Documentation",
+  title: "pkg-scaffold v3.2.1 Documentation",
   base: '/pkg-scaffold/',
   head: [
     ['link', { rel: 'icon', href: '/pkg-scaffold/favicon.png' }],
@@ -19,7 +19,32 @@ export default defineConfig({
     nav: [
       { text: 'Home', link: '/' },
       { text: 'Guide', link: '/guide' },
-      { text: 'API', link: '/api-headless' },
+      { 
+        text: 'API & SDK', 
+        items: [
+          { text: 'Headless API', link: '/api-headless' },
+          { text: 'Plugin SDK', link: '/plugin-sdk' }
+        ]
+      },
+      {
+        text: 'Features',
+        items: [
+          { text: 'Circular Detection', link: '/guide#circular-dependency-tracking' },
+          { text: 'CSS-in-JS', link: '/css-in-js' },
+          { text: 'Asset Tracking', link: '/asset-tracking' },
+          { text: 'Monorepo Support', link: '/monorepo' },
+          { text: 'AI Self-Healing', link: '/ai-healing' },
+          { text: 'Impact Analysis', link: '/impact-analysis' }
+        ]
+      },
+      {
+        text: 'Resources',
+        items: [
+          { text: 'Migration Guide', link: '/migration' },
+          { text: 'Best Practices', link: '/best-practices' },
+          { text: 'Troubleshooting', link: '/troubleshooting' }
+        ]
+      },
       { text: 'Reference', link: '/reference' }
     ],
     sidebar: [
@@ -61,7 +86,7 @@ export default defineConfig({
       { icon: 'npm', link: 'https://www.npmjs.com/package/pkg-scaffold'}
     ],
     footer: {
-      message: 'Released under the MIT License.',
+      message: 'Released under the Apache 2.0 License. "The original code was from the lovely DreamLong"',
       copyright: 'Copyright © 2026 DreamLongYT'
     }
   }
