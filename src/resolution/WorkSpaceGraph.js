@@ -21,6 +21,16 @@ export class WorkspaceGraph {
     const pnpmWorkspacePath = path.join(this.context.cwd, 'pnpm-workspace.yaml');
     
     let workspaceGlobs = [];
+    this.hoistedDependencies = new Set();
+
+    // Load hoisted dependencies from root package.json (Knip Issue #1792 fix)
+    try {
+      const rootPkg = JSON.parse(await fs.readFile(rootPackageJsonPath, 'utf8'));
+      const deps = { ...rootPkg.dependencies, ...rootPkg.devDependencies };
+      Object.keys(deps).forEach(d => this.hoistedDependencies.add(d));
+    } catch (e) {
+      // No root package.json or unreadable
+    }
 
     // Protocol A: Check for pnpm workspace configurations
     try {

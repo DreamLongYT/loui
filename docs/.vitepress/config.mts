@@ -1,47 +1,65 @@
 import { defineConfig } from 'vitepress'
 
-// https://vitepress.dev/reference/site-config
 export default defineConfig({
-  title: "pkg-scaffold Documentation",
+  title: "pkg-scaffold v3.3.0 Documentation",
   base: '/pkg-scaffold/',
   head: [
+    ['link', { rel: 'icon', href: '/pkg-scaffold/favicon.png' }],
+    ['link', { rel: 'apple-touch-icon', href: '/pkg-scaffold/favicon.png' }],
     [
       'meta',
       { 
         name: 'google-site-verification', 
-        content: '9Ao1YuH76KcgDtMO6KV8CLJQ6Tq4iCdqOrmU-MRr6ms' // Replace with your actual code from Google
+        content: '9Ao1YuH76KcgDtMO6KV8CLJQ6Tq4iCdqOrmU-MRr6ms'
       }
     ]
   ],
-  description: "An advanced, AST-driven dependency resolution, refactoring, and self-healing engine.",
+  description: "The Ultimate Enterprise Codebase Janitor - OXC-Powered, Type-Aware, and Self-Healing",
   themeConfig: {
-    // https://vitepress.dev/reference/default-theme-config
     nav: [
       { text: 'Home', link: '/' },
       { text: 'Guide', link: '/guide' },
+      { text: 'API', link: '/api-headless' },
       { text: 'Reference', link: '/reference' }
     ],
-
     sidebar: [
       {
-        text: 'Guide',
+        text: 'Getting Started',
         items: [
-          { text: 'Getting Started', link: '/guide' }
+          { text: 'Guide', link: '/guide' },
+          { text: 'Reference', link: '/reference' }
         ]
       },
       {
-        text: 'CLI',
+        text: 'API & Integration',
         items: [
-          { text: 'Reference', link: '/reference' }
+          { text: 'Headless API', link: '/api-headless' },
+          { text: 'Plugin SDK', link: '/plugin-sdk' },
+          { text: 'CSS-in-JS Integration', link: '/css-in-js' },
+          { text: 'Asset Tracking', link: '/asset-tracking' }
+        ]
+      },
+      {
+        text: 'Advanced Features',
+        items: [
+          { text: 'Monorepo Support', link: '/monorepo' },
+          { text: 'AI Self-Healing', link: '/ai-healing' },
+          { text: 'Impact Analysis', link: '/impact-analysis' }
+        ]
+      },
+      {
+        text: 'Resources',
+        items: [
+          { text: 'Migration Guide', link: '/migration' },
+          { text: 'Best Practices', link: '/best-practices' },
+          { text: 'Troubleshooting', link: '/troubleshooting' }
         ]
       }
     ],
-
     socialLinks: [
       { icon: 'github', link: 'https://github.com/DreamLongYT/pkg-scaffold' },
       { icon: 'npm', link: 'https://www.npmjs.com/package/pkg-scaffold'}
     ],
-
     footer: {
       message: 'Released under the MIT License.',
       copyright: 'Copyright © 2026 DreamLongYT'

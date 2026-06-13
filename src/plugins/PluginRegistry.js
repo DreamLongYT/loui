@@ -1,16 +1,18 @@
 import path from 'path';
 import fs from 'fs/promises';
 import { pathToFileURL } from 'url';
+import { KnipAdapter } from './KnipAdapter.js';
 
 /**
  * Advanced Plugin Registry supporting Builtin, Custom, and Knip-style plugins.
- * Version 3.2.0: Enhanced with support for dynamic custom getters.
+ * Version 4.0.0: Enhanced with Modern Frameworks, Backend Services, and Standalone Knip Integration.
  */
 export class PluginRegistry {
     constructor(context) {
         this.context = context;
         this.plugins = new Map();
         this.config = null;
+        this.knipAdapter = new KnipAdapter(context);
     }
 
     async init(projectRoot) {
@@ -35,14 +37,21 @@ export class PluginRegistry {
         }
 
         if (this.config.supportKnipPlugins) {
-            await this.initKnipAdapter();
+            await this.initKnipAdapter(projectRoot);
         }
     }
 
     async loadBuiltinPlugins() {
+        // Core Ecosystems
         const { NextJsPlugin } = await import('./ecosystems/NextJsPlugin.js');
         const { NuxtPlugin, RemixPlugin, SvelteKitPlugin, AstroPlugin } = await import('./ecosystems/GenericPlugins.js');
         const { TypeScriptPlugin } = await import('./ecosystems/TypeScriptPlugin.js');
+        
+        // Modern Frameworks (New in v4.0)
+        const { ReactPlugin, VuePlugin, SveltePlugin, AngularPlugin } = await import('./ecosystems/ModernFrameworks.js');
+        
+        // Backend Services (New in v4.0)
+        const { GraphQLPlugin, DatabasePlugin } = await import('./ecosystems/BackendServices.js');
 
         const builtins = [
             new NextJsPlugin(this.context),
@@ -50,7 +59,13 @@ export class PluginRegistry {
             new RemixPlugin(this.context),
             new SvelteKitPlugin(this.context),
             new AstroPlugin(this.context),
-            new TypeScriptPlugin(this.context)
+            new TypeScriptPlugin(this.context),
+            new ReactPlugin(this.context),
+            new VuePlugin(this.context),
+            new SveltePlugin(this.context),
+            new AngularPlugin(this.context),
+            new GraphQLPlugin(this.context),
+            new DatabasePlugin(this.context)
         ];
 
         builtins.forEach(p => {
@@ -82,8 +97,11 @@ export class PluginRegistry {
         }
     }
 
-    async initKnipAdapter() {
+    async initKnipAdapter(projectRoot) {
         this.context.knipCompatible = true;
+        await this.knipAdapter.discoverPlugins(projectRoot);
+        const knipPlugins = this.knipAdapter.getPlugins();
+        knipPlugins.forEach(p => this.register(p));
     }
 
     register(plugin) {

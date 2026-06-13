@@ -1,117 +1,54 @@
-# Getting Started with pkg-scaffold v3.2.0
+# Getting Started with pkg-scaffold v3.3.0
 
-This guide will walk you through the installation and basic usage of `pkg-scaffold`. Learn how to quickly clean and optimize your project with the latest customization features.
+## Overview
 
-## Installation
+pkg-scaffold v3.3.0 is a major update focused on solving the most critical issues currently facing the JavaScript/TypeScript ecosystem—many of which remain open in competing tools like Knip.
 
-`pkg-scaffold` is an npm package and can be easily installed in your project. It is recommended to install it as a `devDependency`.
+## Why v3.3.0?
 
+This version isn't just a number; it's a statement. We've analyzed the most requested features and reported bugs from across the community and implemented robust solutions.
+
+### 🚀 Key Improvements over Knip
+
+| Feature | pkg-scaffold v3.3.0 | Knip v6 Status |
+| :--- | :--- | :--- |
+| **Circular Dependency Tracking** | ✅ Native Support | 💡 Open Feature Request (#1734) |
+| **tsConfig Path Resolution** | ✅ Robust & v6-Ready | 🔄 Open Issue (#1794) |
+| **Monorepo Hoisting Fix** | ✅ Automatic Detection | 🔄 Open Regression (#1792) |
+| **Self-Healing / Auto-Fix** | ✅ Integrated | ⚠️ Limited |
+| **Standalone Operation** | ✅ No dependencies | ⚠️ Requires full ecosystem |
+
+## New Features
+
+### 🔄 Circular Dependency Tracking
+Detect circular dependencies in your codebase before they cause runtime issues or memory leaks. Unlike other tools, we provide a full trace of the cycle.
+[Read more about Circular Detection](/impact-analysis)
+
+### 🗺️ Robust tsConfig Path Mapping
+Our new `PathMapper` handles complex `baseUrl` and `paths` configurations with precision, ensuring that aliased imports are always resolved correctly, even in multi-package monorepos.
+
+### 📦 Monorepo Hoisting Awareness
+We've solved the "Sibling Workspace" problem. pkg-scaffold correctly identifies when dependencies are hoisted to the root, preventing false positives in individual packages.
+
+## Quick Start
+
+### Installation
 ```bash
-npm install --save-dev pkg-scaffold
+npm install pkg-scaffold
 ```
 
-After installation, you can run `pkg-scaffold` via `npx` or by adding a script to your `package.json`.
-
-## Basic Usage
-
-### Dry-Run Mode (Recommended)
-
-Before making any changes to your project, it is always advisable to use the dry-run mode. This mode analyzes your project and shows you which changes *would be made* without actually applying them.
-
+### Basic Usage
 ```bash
-npx pkg-scaffold --no-fix
+npx pkg-scaffold --fix
 ```
 
-### Applying Changes
-
-If you are satisfied with the proposed changes, you can run `pkg-scaffold` with the `--fix` option to apply the changes to your project.
-
+### Check for Circular Dependencies
 ```bash
-npx pkg-scaffold --fix --yes
+npx pkg-scaffold --circular
 ```
 
-## Customization Update 3.2.0: Custom Getters
+## Community-Driven Development
 
-Version 3.2.0 introduces a powerful new way to customize plugins using **Dynamic Custom Getters**.
+We listen to the issues that matter. By addressing long-standing pain points like circular dependency tracking and robust path resolution, we ensure that your developer experience is smooth and productive.
 
-### New `get(key)` Method
-
-Plugins can now implement custom getter methods that are accessible via a unified `get()` interface. This allows users to define and retrieve custom metadata or functionality within their plugins.
-
-#### Example: Custom Plugin with Getters
-
-```javascript
-export default class MyCustomPlugin extends BasePlugin {
-  get name() {
-    return 'my-custom-tool';
-  }
-
-  // New in 3.2.0: Custom Getter for version
-  getVersion() {
-    return '1.0.0';
-  }
-
-  // Custom data point
-  getAuthor() {
-    return 'Jane Doe';
-  }
-
-  // Usage: plugin.get('version') -> calls getVersion()
-  // Usage: plugin.get('author')  -> calls getAuthor()
-}
-```
-
-### Advanced Plugin Structure
-
-The `BasePlugin` now includes a `get(key)` helper that automatically maps `get('something')` to a method named `getSomething()`.
-
-```javascript
-export default class MyAdvancedPlugin extends BasePlugin {
-  // ... standard methods ...
-
-  // Custom logic that can be queried by the engine or other plugins
-  getCustomStatus() {
-    return this.context.metrics.totalFilesScanned > 100 ? 'large' : 'small';
-  }
-}
-```
-
-## Plugin Development
-
-Building a plugin for pkg-scaffold is straightforward. You need to export a class that extends the `BasePlugin`.
-
-### Basic Plugin Template
-
-```javascript
-export default class MyCustomPlugin {
-  constructor(context) {
-    this.context = context;
-  }
-
-  get name() {
-    return 'my-plugin';
-  }
-
-  getConfigFiles() {
-    return ['my-config.json'];
-  }
-
-  getRoutePatterns() {
-    return [ /\/src\/routes\/.*\.js$/ ];
-  }
-
-  getRequiredSystemContracts() {
-    return ['default', 'handler'];
-  }
-
-  async isActive(baseDir) {
-    return true; 
-  }
-}
-```
-
-## Default Plugins
-
-*   **NextJsPlugin**: Optimizes Next.js projects, detecting unused pages and API routes.
-*   **TypeScriptPlugin**: Advanced support for TypeScript projects, detecting `tsconfig.json` and managing `.ts` and `.d.ts` entry points.
-*   **GenericPlugins**: Basic optimizations for standard JavaScript/TypeScript projects (Nuxt, Remix, SvelteKit, Astro).
+[View the Full Reference](/reference)

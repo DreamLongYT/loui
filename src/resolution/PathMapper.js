@@ -25,15 +25,25 @@ export class PathMapper {
       const rawText = await fs.readFile(configPath, 'utf8');
       
       // Strip inline single-line and block comments before parsing
-      const jsonCleanText = rawText.replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, '$1');
+      // Improved regex to handle more edge cases in tsconfig comments
+      const jsonCleanText = rawText
+        .replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, '$1')
+        .replace(/,(\s*[\]}])/g, '$1'); // Remove trailing commas
+        
       const tsconfig = JSON.parse(jsonCleanText);
 
       if (!tsconfig.compilerOptions) return;
 
       const opts = tsconfig.compilerOptions;
+      
+      // v6 Path Resolution Fix (Knip Issue #1794)
+      // Ensure baseUrl is correctly resolved relative to the tsconfig file location
+      const configDir = path.dirname(configPath);
       if (opts.baseUrl) {
         this.baseUrl = opts.baseUrl;
-        this.absoluteBaseUrl = path.resolve(this.context.cwd, this.baseUrl);
+        this.absoluteBaseUrl = path.resolve(configDir, this.baseUrl);
+      } else {
+        this.absoluteBaseUrl = configDir;
       }
 
       if (opts.paths) {
