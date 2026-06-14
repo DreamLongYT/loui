@@ -1,0 +1,22 @@
+# ============================================================================
+# ⚙️ pkg-scaffold Rule Suppression & Intent Profiles
+# ============================================================================
+# Define exact symbols, file patterns, or dependency keys that must remain 
+# preserved during dead-code scanning and transactional refactoring pruning.
+
+# Framework & Meta Entrypoints (Implicitly Alive)
+pages/api/*
+app/routes/*
+src/entry-point.js
+
+# Intent Suppression: Library Code / Consumer Consumption Contracts
+export:publicApiMethod
+export:initializePlugin
+export:onConfigLoaded
+
+# Globally Ignored Module Specifiers
+@types/node
+tslib
+
+# Secret Heuristic Exemptions (Explicit False Positive Control)
+exempt_token_pattern

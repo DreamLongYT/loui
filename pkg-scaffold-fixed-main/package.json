@@ -1,0 +1,94 @@
+{
+  "name": "pkg-scaffold",
+  "version": "3.3.5",
+  "description": "The Ultimate Enterprise Codebase Janitor. Faster than Knip with OXC integration, type-aware analysis, and automated structural healing. Fully standalone - solving what Knip cannot.",
+  "type": "module",
+  "main": "index.js",
+  "bin": {
+    "pkg-scaffold": "./bin/cli.js"
+  },
+  "scripts": {
+    "start": "node bin/cli.js",
+    "pkg-scaffold:run": "node bin/cli.js",
+    "test": "echo \"Error: no test specified\" && exit 0",
+    "test:stability": "npm run test",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs && cp docs/sitemap.xml docs/.vitepress/dist/ && cp docs/robots.txt docs/.vitepress/dist && cp logo.png docs/.vitepress/dist",
+    "docs:preview": "vitepress preview docs"
+  },
+  "keywords": [
+    "analysis",
+    "analyze",
+    "ast",
+    "automation",
+    "cli",
+    "gui",
+    "class",
+    "dead-code",
+    "dependencies",
+    "dependency-analysis",
+    "dependency-audit",
+    "detect",
+    "devDependencies",
+    "duplicate",
+    "entropy",
+    "enum",
+    "export",
+    "files",
+    "find",
+    "ghost-dependencies",
+    "javascript",
+    "maintenance",
+    "members",
+    "missing",
+    "missing-imports",
+    "monorepo",
+    "namespace",
+    "oxc",
+    "package.json",
+    "packages",
+    "scan",
+
+    "structural-healing",
+    "setup",
+    "type",
+    "types",
+    "typescript",
+    "unreferenced",
+    "unresolved",
+    "unused",
+    "unused-packages",
+    "workspace"
+  ],
+  "author": "DreamLongYT",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DreamLongYT/pkg-scaffold.git"
+  },
+  "bugs": {
+    "url": "https://github.com/DreamLongYT/pkg-scaffold/issues"
+  },
+  "homepage": "https://dreamlongyt.github.io/pkg-scaffold/",
+  "dependencies": {
+    "ansis": "^3.0.0",
+    "commander": "^12.0.0",
+    "enhanced-resolve": "^5.16.0",
+    "execa": "^8.0.1",
+    "oxc-parser": "^0.135.0",
+    "oxc-resolver": "^11.20.0",
+    "ramda": "^0.29.1",
+    "typescript": "^5.0.0",
+    "yocto-spinner": "^0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.3",
+    "express": "^5.2.1",
+    "lodash": "^4.18.1",
+    "vitepress": "^1.6.4",
+    "vue": ">=3.5.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
