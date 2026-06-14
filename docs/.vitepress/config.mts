@@ -1,11 +1,10 @@
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
-  title: "pkg-scaffold v3.3.2 Documentation",
+  title: "pkg-scaffold v3.3.3 Documentation",
   base: '/pkg-scaffold/',
   head: [
-    ['link', { rel: 'icon', href: '/pkg-scaffold/favicon.png' }],
-    ['link', { rel: 'apple-touch-icon', href: '/pkg-scaffold/favicon.png' }],
+    ['link', { rel: 'icon', href: '/pkg-scaffold/logo.png' }],
     [
       'meta',
       { 
@@ -46,40 +45,6 @@ export default defineConfig({
         ]
       },
       { text: 'Reference', link: '/reference' }
-    ],
-    sidebar: [
-      {
-        text: 'Getting Started',
-        items: [
-          { text: 'Guide', link: '/guide' },
-          { text: 'Reference', link: '/reference' }
-        ]
-      },
-      {
-        text: 'API & Integration',
-        items: [
-          { text: 'Headless API', link: '/api-headless' },
-          { text: 'Plugin SDK', link: '/plugin-sdk' },
-          { text: 'CSS-in-JS Integration', link: '/css-in-js' },
-          { text: 'Asset Tracking', link: '/asset-tracking' }
-        ]
-      },
-      {
-        text: 'Advanced Features',
-        items: [
-          { text: 'Monorepo Support', link: '/monorepo' },
-          { text: 'AI Self-Healing', link: '/ai-healing' },
-          { text: 'Impact Analysis', link: '/impact-analysis' }
-        ]
-      },
-      {
-        text: 'Resources',
-        items: [
-          { text: 'Migration Guide', link: '/migration' },
-          { text: 'Best Practices', link: '/best-practices' },
-          { text: 'Troubleshooting', link: '/troubleshooting' }
-        ]
-      }
     ],
     socialLinks: [
       { icon: 'github', link: 'https://github.com/DreamLongYT/pkg-scaffold' },

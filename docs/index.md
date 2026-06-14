@@ -2,11 +2,11 @@
 layout: home
 
 hero:
-  name: pkg-scaffold v3.3.2
+  name: pkg-scaffold v3.3.3
   text: The Ultimate Enterprise Codebase Janitor
   tagline: Solving what Knip cannot. Circular-Aware & Self-Healing.
   image:
-    src: /pkg-scaffold/favicon.png
+    src: /pkg-scaffold/logo.png
     alt: pkg-scaffold
   actions:
     - theme: brand
@@ -56,6 +56,9 @@ In large-scale enterprise projects, codebases naturally accumulate "cruft" – u
 | AI-Powered Repair | ✅ | ❌ |
 | Knip Plugin Support | ✅ | N/A |
 | Headless API | ✅ | ✅ |
+
+## Quick Test
+
 
 ## Community & Support
 

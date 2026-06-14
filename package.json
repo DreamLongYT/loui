@@ -1,6 +1,6 @@
 {
   "name": "pkg-scaffold",
-  "version": "3.3.2",
+  "version": "3.3.3",
   "description": "The Ultimate Enterprise Codebase Janitor. Faster than Knip with OXC integration, type-aware analysis, and self-healing capabilities. Fully standalone - solving what Knip cannot.",
   "type": "module",
   "main": "index.js",
@@ -17,24 +17,47 @@
     "docs:preview": "vitepress preview docs"
   },
   "keywords": [
-    "scaffold",
-    "init",
-    "package.json",
-    "setup",
-    "dx",
-    "cli",
+    "analysis",
+    "analyze",
+    "ast",
     "automation",
-    "unused-packages",
-    "ghost-dependencies",
-    "orphaned-dependencies",
+    "cli",
+    "gui",
+    "class",
+    "dead-code",
+    "dependencies",
     "dependency-analysis",
     "dependency-audit",
+    "detect",
+    "devDependencies",
+    "duplicate",
+    "entropy",
+    "enum",
+    "export",
+    "files",
+    "find",
+    "ghost-dependencies",
+    "javascript",
+    "maintenance",
+    "members",
+    "missing",
     "missing-imports",
-    "dead-code",
-    "self-healing",
-    "ast",
+    "monorepo",
+    "namespace",
     "oxc",
-    "circular-dependencies"
+    "package.json",
+    "packages",
+    "scan",
+    "self-healing",
+    "setup",
+    "type",
+    "types",
+    "typescript",
+    "unreferenced",
+    "unresolved",
+    "unused",
+    "unused-packages",
+    "workspace"
   ],
   "author": "DreamLongYT",
   "license": "Apache-2.0",
@@ -54,20 +77,17 @@
     "oxc-parser": "^0.135.0",
     "oxc-resolver": "^11.20.0",
     "ramda": "^0.29.1",
+    "typescript": "^5.0.0",
     "yocto-spinner": "^0.1.0"
-  },
-  "devDepencies": {
-    "vitepress": "^1.0.0",
-    "vue": ">=3.5.0"
-  },
-  "engines": {
-    "node": ">=18.0.0"
   },
   "devDependencies": {
     "@types/node": "^25.9.3",
     "express": "^5.2.1",
     "lodash": "^4.18.1",
-    "typescript": "^6.0.3",
-    "vitepress": "^1.6.4"
+    "vitepress": "^1.6.4",
+    "vue": ">=3.5.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

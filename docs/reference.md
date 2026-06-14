@@ -20,6 +20,7 @@ Options:
   -y, --yes              Skip confirmation prompts for automatic execution
   --init                 Initialize a new pkg-scaffold configuration in the current directory
   -h, --help             display help for command
+  -r, --run              Start Tool
 ```
 
 ## Options in Detail
