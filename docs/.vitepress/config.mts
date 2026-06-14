@@ -4,7 +4,7 @@ export default defineConfig({
   title: "pkg-scaffold v3.3.3 Documentation",
   base: '/pkg-scaffold/',
   head: [
-    ['link', { rel: 'icon', href: '/pkg-scaffold/logo.png' }],
+    ['link', { rel: 'icon', href: '/logo.png' }],
     [
       'meta',
       { 

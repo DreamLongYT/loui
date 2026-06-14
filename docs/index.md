@@ -6,7 +6,7 @@ hero:
   text: The Ultimate Enterprise Codebase Janitor
   tagline: Solving what Knip cannot. Circular-Aware & Self-Healing.
   image:
-    src: /pkg-scaffold/logo.png
+    src: /logo.png
     alt: pkg-scaffold
   actions:
     - theme: brand
