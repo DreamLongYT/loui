@@ -4,7 +4,7 @@
 
 **The Ultimate Enterprise Codebase Janitor: OXC-Powered, Type-Aware, and Self-Healing.**
 
-![Version](https://img.shields.io/badge/version-3.1.3-blue.svg) ![License](https://img.shields.io/badge/license-MIT-green.svg) ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/DreamLongYT/pkg-scaffold/npm-publish.yml?branch=main) ![Performance](https://img.shields.io/badge/performance-OXC--Inside-blueviolet.svg)
+![Version](https://img.shields.io/npm/v/pkg-scaffold) ![License](https://img.shields.io/badge/license-MIT-green.svg) ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/DreamLongYT/pkg-scaffold/npm-publish.yml?branch=main) ![Performance](https://img.shields.io/badge/performance-OXC--Inside-blueviolet.svg)
 
 `pkg-scaffold` is the industry's most advanced codebase optimization engine. Version 3.1.3 marks a massive leap forward, outperforming Knip v6 with a hybrid **OXC + TypeScript** architecture. It doesn't just find dead code—it safely prunes it and validates your project's integrity through a unique **Self-Healing Loop**.
 
