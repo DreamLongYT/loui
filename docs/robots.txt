@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://dreamlongyt.github.io/pkg-scaffold/sitemap.xml
