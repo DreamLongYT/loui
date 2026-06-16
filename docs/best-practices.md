@@ -2,7 +2,7 @@
 
 ## Overview
 
-To get the most out of pkg-scaffold v3.3.11, follow these best practices for project structure, configuration, and workflow integration.
+To get the most out of pkg-scaffold v3.3.12, follow these best practices for project structure, configuration, and workflow integration.
 
 ## Project Structure
 

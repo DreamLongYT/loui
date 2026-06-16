@@ -2,7 +2,7 @@
 layout: home
 
 hero:
-  name: pkg-scaffold v3.3.11
+  name: pkg-scaffold v3.3.12
   text: The Ultimate Enterprise Codebase Janitor
   tagline: Solving what Knip cannot. Circular-Aware & Self-Healing.
   image:

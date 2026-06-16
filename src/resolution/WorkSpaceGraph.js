@@ -212,34 +212,85 @@ export class WorkspaceGraph {
 
   /**
    * Tracks package entry points by evaluating standard fields and main/exports configurations.
+   * Leverages explicit manifest settings first, remapping unbuilt targets to source code files.
    */
   calculatePackageExportsEntries(pkg, pkgDir) {
     const entries = new Set();
+    const fs = require('fs');
 
-    // Trace traditional entry fields
-    if (pkg.main) entries.add(path.resolve(pkgDir, pkg.main));
-    if (pkg.module) entries.add(path.resolve(pkgDir, pkg.module));
+    // 1. Trace traditional entry fields from manifest
+    if (pkg.main && typeof pkg.main === 'string') entries.add(path.resolve(pkgDir, pkg.main));
+    if (pkg.module && typeof pkg.module === 'string') entries.add(path.resolve(pkgDir, pkg.module));
     if (pkg.browser && typeof pkg.browser === 'string') entries.add(path.resolve(pkgDir, pkg.browser));
-    if (pkg.types) entries.add(path.resolve(pkgDir, pkg.types));
-    if (pkg.typings) entries.add(path.resolve(pkgDir, pkg.typings));
+    if (pkg.types && typeof pkg.types === 'string') entries.add(path.resolve(pkgDir, pkg.types));
+    if (pkg.typings && typeof pkg.typings === 'string') entries.add(path.resolve(pkgDir, pkg.typings));
 
-    // Handle deep nested conditional exports matrices block parameters
+    // 2. Trace secondary and toolchain executable fields to avoid missing binary/source roots
+    if (pkg.bin) {
+      if (typeof pkg.bin === 'string') {
+        entries.add(path.resolve(pkgDir, pkg.bin));
+      } else if (typeof pkg.bin === 'object' && pkg.bin !== null) {
+        for (const binPath of Object.values(pkg.bin)) {
+          if (typeof binPath === 'string') entries.add(path.resolve(pkgDir, binPath));
+        }
+      }
+    }
+    if (pkg.source && typeof pkg.source === 'string') entries.add(path.resolve(pkgDir, pkg.source));
+
+    // 3. Handle deep nested conditional exports matrices block parameters
     if (pkg.exports) {
       this.recursivelyUnwindExports(pkg.exports, pkgDir, entries);
     }
 
-    // Default file index fallback configurations
+    // 4. Manifest-Driven Verification Layer
+    // Before applying static fallbacks, parse entries to handle compile-to-source remappings
+    const collectedPaths = Array.from(entries);
+    const verifiedManifestEntries = [];
+
+    for (const absolutePath of collectedPaths) {
+      const normalizedPath = path.normalize(absolutePath);
+
+      if (fs.existsSync(normalizedPath)) {
+        verifiedManifestEntries.push(normalizedPath);
+      } else {
+        // Source Re-mapping Engine: Intercept artifact flags pointing to unbuilt targets
+        // and resolve them back to their active source development files
+        const remappedFallbacks = [
+          normalizedPath.replace(/([\\/]|^)(dist|build|lib|out)([\\/])/, '$1src$3').replace(/\.js$/, '.ts'),
+          normalizedPath.replace(/([\\/]|^)(dist|build|lib|out)([\\/])/, '$1src$3').replace(/\.js$/, '.tsx'),
+          normalizedPath.replace(/([\\/]|^)(dist|build|lib|out)([\\/])/, '$1src$3').replace(/\.js$/, '.jsx'),
+          normalizedPath.replace(/\.js$/, '.ts'),
+          normalizedPath.replace(/\.js$/, '.tsx')
+        ];
+
+        for (const fallbackPath of remappedFallbacks) {
+          if (fs.existsSync(fallbackPath)) {
+            verifiedManifestEntries.push(fallbackPath);
+            break; // Valid file bound, terminate remapping tree cascade
+          }
+        }
+      }
+    }
+
+    // Clear initial unverified states and populate with verified manifest tracks
+    entries.clear();
+    verifiedManifestEntries.forEach(item => entries.add(item));
+
+    // 5. Default file index fallback configurations
+    // Only runs if manifest checks yielded absolutely zero graph anchors
     if (entries.size === 0) {
-      // Standard roots
-      entries.add(path.resolve(pkgDir, 'index.js'));
-      entries.add(path.resolve(pkgDir, 'index.ts'));
-      entries.add(path.resolve(pkgDir, 'index.tsx'));
-      entries.add(path.resolve(pkgDir, 'index.jsx'));
-      // Common src patterns
-      entries.add(path.resolve(pkgDir, 'src/index.ts'));
-      entries.add(path.resolve(pkgDir, 'src/index.tsx'));
-      entries.add(path.resolve(pkgDir, 'src/index.js'));
-      entries.add(path.resolve(pkgDir, 'src/index.jsx'));
+      const standardFallbacks = [
+        'index.js', 'index.ts', 'index.tsx', 'index.jsx',
+        'src/index.ts', 'src/index.tsx', 'src/index.js', 'src/index.jsx'
+      ];
+
+      for (const fallback of standardFallbacks) {
+        const absoluteFallbackPath = path.resolve(pkgDir, fallback);
+        // Only anchor the file if it actively exists on the filesystem layout
+        if (fs.existsSync(absoluteFallbackPath)) {
+          entries.add(absoluteFallbackPath);
+        }
+      }
     }
 
     return Array.from(entries);

@@ -1,16 +1,16 @@
-# Getting Started with pkg-scaffold v3.3.11
+# Getting Started with pkg-scaffold v3.3.12
 
 ## Overview
 
-pkg-scaffold v3.3.11 is a major update focused on solving the most critical issues currently facing the JavaScript/TypeScript ecosystem—many of which remain open in competing tools like Knip.
+pkg-scaffold v3.3.12 is a major update focused on solving the most critical issues currently facing the JavaScript/TypeScript ecosystem—many of which remain open in competing tools like Knip.
 
-## Why v3.3.11?
+## Why v3.3.12?
 
 This version isn't just a number; it's a statement. We've analyzed the most requested features and reported bugs from across the community and implemented robust solutions.
 
 ### 🚀 Key Improvements over Knip
 
-| Feature | pkg-scaffold v3.3.11 | Knip v6 Status |
+| Feature | pkg-scaffold v3.3.12 | Knip v6 Status |
 | :--- | :--- | :--- |
 | **Circular Dependency Tracking** | ✅ Native Support | 💡 Open Feature Request (#1734) |
 | **tsConfig Path Resolution** | ✅ Robust & v6-Ready | 🔄 Open Issue (#1794) |
@@ -52,7 +52,7 @@ npx pkg-scaffold -r --circular
 npx pkg-scaffold -r
 ```
 
-> **Note**: Always use the `-r` or `--run` flag to execute the analysis loop. v3.3.11 focuses on security and precision.
+> **Note**: Always use the `-r` or `--run` flag to execute the analysis loop. v3.3.12 focuses on security and precision.
 
 ## Community-Driven Development
 
