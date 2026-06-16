@@ -3,7 +3,7 @@ import { OxcAnalyzer } from "./ast/OxcAnalyzer.js";
 import { SecretScanner } from './ast/SecretScanner.js';
 /**
  * ============================================================================
- * 📦 pkg-scaffold v3.3.6: Unified Architectural Refactoring Orchestrator
+ * 📦 pkg-scaffold v3.3.8: Unified Architectural Refactoring Orchestrator
  * ============================================================================
  * Main execution bridge managing multi-pass compilation cycles, semantic cross-linking,
  * supply-chain validation audits, and automated structural healing rollbacks.
@@ -39,7 +39,7 @@ import { SupplyChainGuard } from './performance/SupplyChainGuard.js';
 export class RefactoringEngine {
   constructor(options = {}) {
     // Stage 1: Instantiate State Registers and Global Variables context
-    this.context = new EngineContext(options);
+    this.context = new EngineContext(options.cwd || process.cwd());
     
     // Stage 2: Initialize File Mappers and Multi-Package Graph Networks
     this.pathMapper = new PathMapper(this.context);
@@ -85,7 +85,7 @@ export class RefactoringEngine {
       }
       
       // Pass 1: Boot environment contexts and load alias configuration maps
-      await this.context.initialize();
+      
       await this.pathMapper.loadMappings(this.context.tsconfigFilename);
       
       // Always attempt workspace mesh initialization – it will auto-detect workspace
@@ -124,7 +124,7 @@ export class RefactoringEngine {
       }
 
       for (const filePath of sourceCodeFilesList) {
-        const node = this.context.createNode(filePath);
+        const node = this.context.getOrCreateNode(filePath);
         const currentHash = await this.cacheManager.computeHash(filePath);
         node.contentHash = currentHash;
 
@@ -209,7 +209,7 @@ export class RefactoringEngine {
 
       // NEW: Circular Dependency Detection
       console.log(ansis.dim('🔄 Detecting circular dependencies...'));
-      const cycles = this.circularDetector.detectCycles(this.context.graph, this.context);
+      const cycles = this.circularDetector.detectCycles(this.context.projectGraph, this.context);
       if (cycles.length > 0) {
         console.warn(ansis.bold.yellow(`\n⚠️  Detected ${cycles.length} circular dependencies:`));
         this.circularDetector.formatCycles().forEach(c => console.log(ansis.dim(`    • ${c}`)));
@@ -241,32 +241,32 @@ export class RefactoringEngine {
 
       // Pass 5: Compile metrics summary and print diagnostics report
       const analysisSummary = await this.context.generateSummaryReport();
-      analysisSummary.structuralIssuesDetected.hardcodedSecrets = allSecrets;
-      this.displayConsoleDiagnostics(analysisSummary);
+      analysisSummary.hardcodedSecrets = allSecrets;
+      // this.displayConsoleDiagnostics(analysisSummary);
 
       // Pass 6: Display Optimization Plan and Run Automated Structural Healing
-      const structuralModificationsStaged = 
-        analysisSummary.structuralIssuesDetected.deadFiles.length > 0 || 
-        analysisSummary.structuralIssuesDetected.deadExports.length > 0 ||
-        analysisSummary.structuralIssuesDetected.unusedDependencies.length > 0;
+      console.log("JSON_START", JSON.stringify(analysisSummary), "JSON_END"); const structuralModificationsStaged = 
+        analysisSummary.deadFiles.length > 0 || 
+        analysisSummary.deadExports.length > 0 ||
+        analysisSummary.unusedDependencies.length > 0;
 
       if (structuralModificationsStaged) {
         console.log(ansis.bold.yellow('\n📋 Proposed Optimization Plan:'));
         console.log(ansis.dim('------------------------------------------------------------'));
         
-        if (analysisSummary.structuralIssuesDetected.deadFiles.length > 0) {
-          console.log(ansis.bold(`  🗑️  Delete ${analysisSummary.structuralIssuesDetected.deadFiles.length} orphaned files:`));
-          analysisSummary.structuralIssuesDetected.deadFiles.forEach(f => console.log(ansis.dim(`    • ${f}`)));
+        if (analysisSummary.deadFiles.length > 0) {
+          console.log(ansis.bold(`  🗑️  Delete ${analysisSummary.deadFiles.length} orphaned files:`));
+          analysisSummary.deadFiles.forEach(f => console.log(ansis.dim(`    • ${f}`)));
         }
         
-        if (analysisSummary.structuralIssuesDetected.deadExports.length > 0) {
-          console.log(ansis.bold(`  ✂️  Prune ${analysisSummary.structuralIssuesDetected.deadExports.length} unused named exports:`));
-          analysisSummary.structuralIssuesDetected.deadExports.forEach(e => console.log(ansis.dim(`    • ${e.symbol} in ${e.file}:${e.line}`)));
+        if (analysisSummary.deadExports.length > 0) {
+          console.log(ansis.bold(`  ✂️  Prune ${analysisSummary.deadExports.length} unused named exports:`));
+          analysisSummary.deadExports.forEach(e => console.log(ansis.dim(`    • ${e.symbol} in ${e.file}:${e.line}`)));
         }
 
-        if (analysisSummary.structuralIssuesDetected.unusedDependencies.length > 0) {
-          console.log(ansis.bold(`  📦 Remove ${analysisSummary.structuralIssuesDetected.unusedDependencies.length} unused dependencies:`));
-          analysisSummary.structuralIssuesDetected.unusedDependencies.forEach(d => console.log(ansis.dim(`    • ${d.package} (${d.type} in ${d.manifest})`)));
+        if (analysisSummary.unusedDependencies.length > 0) {
+          console.log(ansis.bold(`  📦 Remove ${analysisSummary.unusedDependencies.length} unused dependencies:`));
+          analysisSummary.unusedDependencies.forEach(d => console.log(ansis.dim(`    • ${d.package} (${d.type} in ${d.manifest})`)));
         }
         console.log(ansis.dim('------------------------------------------------------------'));
 
@@ -280,19 +280,19 @@ export class RefactoringEngine {
           if (proceed) {
             // Execute healing lifecycle (git-state-capture -> apply -> verify -> commit/rollback)
             await this.selfHealer.runSelfHealingLifecycle(async () => {
-              for (const relPath of analysisSummary.structuralIssuesDetected.deadFiles) {
+              for (const relPath of analysisSummary.deadFiles) {
                 const absPath = path.resolve(this.context.cwd, relPath);
                 console.log(ansis.red(`✂️  Removing unreferenced file: ${relPath}`));
                 await this.txManager.stageDeletion(absPath);
               }
 
-              for (const unusedExport of analysisSummary.structuralIssuesDetected.deadExports) {
+              for (const unusedExport of analysisSummary.deadExports) {
                 const absPath = path.resolve(this.context.cwd, unusedExport.file);
-                const node = this.context.graph.get(absPath);
+                const node = this.context.projectGraph.get(absPath);
                 if (!node) continue;
                 const meta = node.internalExports.get(unusedExport.symbol);
 
-                const safetyVerdict = await this.impactAnalyzer.verifyRefactorSafety(absPath, unusedExport.symbol, this.context.graph);
+                const safetyVerdict = await this.impactAnalyzer.verifyRefactorSafety(absPath, unusedExport.symbol, this.context.projectGraph);
                 if (safetyVerdict.isSafeToPrune) {
                   console.log(ansis.yellow(`⚡ Stripping unused export [${unusedExport.symbol}] from: ${unusedExport.file}:${unusedExport.line}`));
                   const nextText = await this.sourceRewriter.stripNamedExportSignature(absPath, unusedExport.symbol, meta);
@@ -309,7 +309,7 @@ export class RefactoringEngine {
         }
       }
 
-      await this.cacheManager.saveCacheManifest(this.context.graph);
+      await this.cacheManager.saveCacheManifest(this.context.projectGraph);
       if (rl) rl.close();
       console.log(ansis.bold.green('\n✨ Core optimization cycle completed smoothly. Codebase workspace is healthy.'));
 
@@ -338,17 +338,17 @@ export class RefactoringEngine {
   }
 
   async linkDependencyGraph() {
-    for (const [filePath, node] of this.context.graph.entries()) {
+    for (const [filePath, node] of this.context.projectGraph.entries()) {
       // Pass A: Link all explicit imports (static + dynamic + re-export sources)
       for (const specifier of node.explicitImports) {
         const resolvedPath = this.resolver.resolveModulePath(filePath, specifier);
-        if (resolvedPath && this.context.graph.has(resolvedPath)) {
-          this.context.graph.get(resolvedPath).incomingEdges.add(filePath);
+        if (resolvedPath && this.context.projectGraph.has(resolvedPath)) {
+          this.context.projectGraph.get(resolvedPath).incomingEdges.add(filePath);
           node.outgoingEdges.add(resolvedPath);
           
           // Fix: Ensure all internal exports from a re-exported source are marked as used
           // so the source file itself is never considered orphaned.
-          const targetNode = this.context.graph.get(resolvedPath);
+          const targetNode = this.context.projectGraph.get(resolvedPath);
           const isReExport = Array.from(node.internalExports.values()).some(exp => exp.source === specifier);
           if (isReExport) {
             targetNode.isLibraryEntry = true; // Protect re-exported internal files
@@ -359,8 +359,8 @@ export class RefactoringEngine {
       // Pass A.2: Mark package entry points as library entries
       for (const pkg of this.workspaceGraph.packageManifests.values()) {
         for (const entryPath of pkg.entryPoints) {
-          if (this.context.graph.has(entryPath)) {
-            this.context.graph.get(entryPath).isLibraryEntry = true;
+          if (this.context.projectGraph.has(entryPath)) {
+            this.context.projectGraph.get(entryPath).isLibraryEntry = true;
           }
         }
       }
@@ -377,15 +377,15 @@ export class RefactoringEngine {
 
         if (symbol === '*') {
           // Wildcard import / re-export-all: add a direct edge to the resolved file.
-          if (this.context.graph.has(resolvedPath)) {
-            this.context.graph.get(resolvedPath).incomingEdges.add(filePath);
+          if (this.context.projectGraph.has(resolvedPath)) {
+            this.context.projectGraph.get(resolvedPath).incomingEdges.add(filePath);
             node.outgoingEdges.add(resolvedPath);
           }
         } else {
           // Named import: trace through barrel files to the actual declaration origin.
-          const traceResolution = await this.barrelParser.determineSymbolDeclarationOrigin(resolvedPath, symbol, this.context.graph);
-          if (traceResolution && this.context.graph.has(traceResolution.originFile)) {
-            this.context.graph.get(traceResolution.originFile).incomingEdges.add(filePath);
+          const traceResolution = await this.barrelParser.determineSymbolDeclarationOrigin(resolvedPath, symbol, this.context.projectGraph);
+          if (traceResolution && this.context.projectGraph.has(traceResolution.originFile)) {
+            this.context.projectGraph.get(traceResolution.originFile).incomingEdges.add(filePath);
             node.outgoingEdges.add(traceResolution.originFile);
             // Fix: Store the absolute resolution in importedSymbols so isSymbolReferencedExternally can find it
             // Use the traced symbol name (in case of re-exports with renaming)

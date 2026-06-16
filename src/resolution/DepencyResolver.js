@@ -14,6 +14,7 @@ export class DependencyResolver {
     // Instantiate production-grade enhanced-resolve workspace parameters
     this.nativeResolver = resolve.create.sync({
       conditionNames: ['import', 'module', 'require', 'node', 'types'],
+      // Extensions prioritized: TS then JS
       extensions: ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs', '.json', '.vue'],
       mainFields: ['module', 'main', 'types'],
       exportsFields: ['exports'],
@@ -23,12 +24,9 @@ export class DependencyResolver {
 
   /**
    * Resolves a raw import string from a source file into an absolute file path.
-   * @param {string} containingFile - Absolute path of the file containing the import declaration
-   * @param {string} importSpecifier - Raw import target string (e.g., '../components/Button' or '@utils/math')
-   * @returns {string|null} Resolved absolute file path location on disk, or null if external/third-party node_module
+   * Handles the "trap" where .ts files import .js files that should resolve to .ts.
    */
   resolveModulePath(containingFile, importSpecifier) {
-    // Challenge #16: Ignore built-in Node.js modules (fs, path, etc.)
     if (importSpecifier.startsWith('node:') || [
       'assert', 'async_hooks', 'buffer', 'child_process', 'cluster', 'console', 'constants',
       'crypto', 'dgram', 'dns', 'domain', 'events', 'fs', 'fs/promises', 'http', 'http2',
@@ -41,27 +39,41 @@ export class DependencyResolver {
 
     const containingDir = path.dirname(containingFile);
 
+    // --- NEW: Fix for JS-in-TS import trap ---
+    // If we are in a TS file and importing something ending in .js, 
+    // we should try to resolve the .ts version first.
+    let effectiveSpecifier = importSpecifier;
+    const isTsFile = /\.(ts|tsx|mts|cts)$/.test(containingFile);
+    if (isTsFile && importSpecifier.endsWith('.js')) {
+        // Try replacing .js with .ts
+        const tsSpecifier = importSpecifier.replace(/\.js$/, '.ts');
+        try {
+            const resolvedTs = this.nativeResolver(containingDir, tsSpecifier);
+            if (this.isAbsoluteInternalPath(resolvedTs)) return resolvedTs;
+        } catch (e) {
+            // Fall back to original specifier if .ts version doesn't exist
+        }
+    }
+    // -----------------------------------------
+
     // Rule A: Intercept and resolve local monorepo workspace cross-links
-    if (this.workspaceGraph.isLocalWorkspaceSpecifier(importSpecifier)) {
-      const match = this.workspaceGraph.getWorkspacePackageMatch(importSpecifier);
+    if (this.workspaceGraph.isLocalWorkspaceSpecifier(effectiveSpecifier)) {
+      const match = this.workspaceGraph.getWorkspacePackageMatch(effectiveSpecifier);
       if (match) {
-        if (importSpecifier === match.packageName) {
-          // Point directly to the target package's configured index entry file
+        if (effectiveSpecifier === match.packageName) {
           return match.entryPoints[0] || null;
         }
         
-        // Handle deep sub-path monorepo target imports
-        const subPathOffset = importSpecifier.slice(match.packageName.length + 1);
+        const subPathOffset = effectiveSpecifier.slice(match.packageName.length + 1);
         try {
           return this.nativeResolver(match.rootDirectory, `./${subPathOffset}`);
         } catch {
-          // Fall back to scanning the package root directly if the sub-path lookup fails
         }
       }
     }
 
     // Rule B: Intercept and expand path mapping aliases (@/*)
-    const aliasedCandidates = this.pathMapper.resolveCandidatePaths(importSpecifier);
+    const aliasedCandidates = this.pathMapper.resolveCandidatePaths(effectiveSpecifier);
     if (aliasedCandidates.length > 0) {
       for (const candidate of aliasedCandidates) {
         try {
@@ -70,35 +82,29 @@ export class DependencyResolver {
             return resolvedPath;
           }
         } catch {
-          // Candidate target path absent; try the next fallback pattern entry
         }
       }
     }
 
-    // Rule C: Standard file system lookups for standard files or package assets
+    // Rule C: Standard file system lookups
     try {
-      const resolvedPath = this.nativeResolver(containingDir, importSpecifier);
+      const resolvedPath = this.nativeResolver(containingDir, effectiveSpecifier);
       if (this.isAbsoluteInternalPath(resolvedPath)) {
         return resolvedPath;
       }
     } catch (err) {
       if (this.context.verbose) {
-        // Output trace logs for unresolvable dependencies during deep code investigations
-        console.debug(`[Resolution Trace Skip] Specifier unresolvable from context: ${importSpecifier} inside ${containingFile}`);
+        console.debug(`[Resolution Trace Skip] Specifier unresolvable: ${effectiveSpecifier} inside ${containingFile}`);
       }
     }
 
-    return null; // Target is an external node_module dependency or an unresolvable asset
+    return null;
   }
 
-  /**
-   * Ensures our tracking focus stays locked onto internal codebase components, bypassing third-party node_modules.
-   */
   isAbsoluteInternalPath(resolvedPath) {
     if (!resolvedPath) return false;
     const normalized = resolvedPath.replace(/\\/g, '/');
     
-    // Ignore external node_modules blocks, but preserve local monorepo packages that live inside symlinked node_modules
     if (normalized.includes('/node_modules/')) {
       for (const [name, meta] of this.workspaceGraph.packageManifests.entries()) {
         if (normalized.startsWith(meta.rootDirectory.replace(/\\/g, '/'))) {
@@ -111,14 +117,10 @@ export class DependencyResolver {
     return path.isAbsolute(resolvedPath);
   }
 
-  /**
-   * Challenge #17 Intent Detection. Evaluates if an export serves as a consumer contract distribution node.
-   */
   determineIntentProfile(filePath, declaredExportsManifest) {
     const fileName = path.basename(filePath);
     const isPublicContractFile = /(^index|^public\-api|^entry)\.(ts|js|tsx|jsx)$/i.test(fileName);
     
-    // If the file is a primary bundle entry point, flag its exports as protected public contracts
     if (isPublicContractFile) {
       for (const [symbolKey, metadata] of declaredExportsManifest.entries()) {
         metadata.isLibraryContract = true;

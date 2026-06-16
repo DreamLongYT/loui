@@ -1,7 +1,7 @@
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
-  title: "pkg-scaffold v3.3.6 Documentation",
+  title: "pkg-scaffold v3.3.8 Documentation",
   base: '/pkg-scaffold/',
   head: [
     ['link', { rel: 'icon', href: '/logo.png' }],

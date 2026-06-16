@@ -2,7 +2,7 @@
 layout: home
 
 hero:
-  name: pkg-scaffold v3.3.7
+  name: pkg-scaffold v3.3.8
   text: The Ultimate Enterprise Codebase Janitor
   tagline: Solving what Knip cannot. Circular-Aware & Self-Healing.
   image:
@@ -59,9 +59,9 @@ In large-scale enterprise projects, codebases naturally accumulate "cruft" – u
 
 ## Quick Test
 
-### pkg-scaffold v3.3.7
+### pkg-scaffold v3.3.8
 
-> **📦 pkg-scaffold v3.3.7 Engine Activation**
+> **📦 pkg-scaffold v3.3.8 Engine Activation**
 
 ```
 Target Workspace Root : E:\Download\final-test-package

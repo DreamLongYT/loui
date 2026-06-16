@@ -2,7 +2,7 @@
 
 ## Overview
 
-pkg-scaffold v3.3.7 is designed from the ground up to support modern monorepo structures. It now features **Automatic Workspace Detection**, meaning it will automatically find your `pnpm-workspace.yaml` or `workspaces` field in `package.json`. It understands workspace protocols, cross-package dependencies, and the complex graph relationships inherent in large-scale multi-package projects.
+pkg-scaffold v3.3.8 is designed from the ground up to support modern monorepo structures. It now features **Automatic Workspace Detection**, meaning it will automatically find your `pnpm-workspace.yaml` or `workspaces` field in `package.json`. It understands workspace protocols, cross-package dependencies, and the complex graph relationships inherent in large-scale multi-package projects.
 
 ## Supported Tools
 
@@ -77,7 +77,7 @@ If `ui-components` exports a `Button` that is only used in `web-app`, pkg-scaffo
 npx pkg-scaffold --workspace -r
 ```
 
-> **Note**: In v3.3.7+, the engine automatically detects monorepo layouts. Using `--workspace` forces the mesh evaluation even if no root config is found.
+> **Note**: In v3.3.8+, the engine automatically detects monorepo layouts. Using `--workspace` forces the mesh evaluation even if no root config is found.
 
 ### Analyze specific package
 ```bash

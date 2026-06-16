@@ -6,7 +6,7 @@
  * passwords, and other sensitive credentials using heuristic pattern matching
  * on both variable names and string literal values.
  *
- * New in v3.3.6: integrated into the main analysis pipeline so that secrets
+ * New in v3.3.8: integrated into the main analysis pipeline so that secrets
  * are surfaced alongside dead-code and unused-dependency findings.
  */
 

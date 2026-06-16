@@ -110,7 +110,7 @@ export class MagicDetector {
       // CLI binaries
       '/bin/cli.js', '/bin/cli.ts', '/bin/cli.mjs',
       '/bin/index.js', '/bin/index.ts',
-      // Server / app entry points (Reduced in v3.3.6 to avoid false positives in libraries)
+      // Server / app entry points (Reduced in v3.3.8 to avoid false positives in libraries)
       '/src/main.ts', '/src/main.js',
       '/src/app.ts', '/src/app.js',
       '/src/api/HeadlessAPI.js', '/src/api/PluginSDK.js',

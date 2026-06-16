@@ -10,8 +10,8 @@
   // Engine performance and behavior options
   "options": {
     "verbose": false,
-    "fastMode": true, // Uses OXC parser for 4x speed boost
-    "selfHealing": true // Automatically fixes and validates code
+    "fastMode": true,
+    "selfHealing": true
   },
 
   // List of core plugins to load (if useBuiltinPlugins is true)
@@ -22,5 +22,21 @@
     "sveltekit",
     "astro",
     "typescript"
+  ],
+
+  // Dependencies to ignore during unused dependency analysis
+  // This prevents false positives for tools that analyze themselves
+  "ignoreDependencies": [
+    "pkg-scaffold",
+    "@types/*"
+  ],
+
+  // File patterns to exclude from analysis
+  "exclude": [
+    "node_modules",
+    ".git",
+    "dist",
+    "build",
+    "coverage"
   ]
 }
