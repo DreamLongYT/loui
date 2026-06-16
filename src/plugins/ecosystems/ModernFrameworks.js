@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * Modern Frameworks Plugins for pkg-scaffold v4.0.0
+ * Modern Frameworks Plugins for loui v4.0.0
  * ============================================================================
  * Built-in support for React, Vue, Svelte, and Angular.
  */

@@ -1,15 +1,16 @@
 {
-  "name": "pkg-scaffold",
-  "version": "3.3.14",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "name": "loui",
+  "version": "4.0.0",
   "description": "The Ultimate Enterprise Codebase Janitor. Faster than Knip with OXC integration, type-aware analysis, and automated structural healing. Fully standalone - solving what Knip cannot.",
   "type": "module",
   "main": "index.js",
   "bin": {
-    "pkg-scaffold": "./bin/cli.js"
+    "loui": "./bin/cli.js"
   },
   "scripts": {
     "start": "node bin/cli.js",
-    "pkg-scaffold:run": "npx pkg-scaffold --fix",
+    "loui:run": "npx loui --fix",
     "test": "echo \"Error: no test specified\" && exit 0",
     "test:stability": "npm run test",
     "docs:dev": "vitepress dev docs",
@@ -69,12 +70,12 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/DreamLongYT/pkg-scaffold.git"
+    "url": "git+https://github.com/DreamLongYT/loui.git"
   },
   "bugs": {
-    "url": "https://github.com/DreamLongYT/pkg-scaffold/issues"
+    "url": "https://github.com/DreamLongYT/loui/issues"
   },
-  "homepage": "https://dreamlongyt.github.io/pkg-scaffold/",
+  "homepage": "https://dreamlongyt.github.io/loui/",
   "dependencies": {
     "ansis": "^3.0.0",
     "commander": "^12.0.0",

@@ -104,7 +104,7 @@ export class DependencyProfiler {
       'bundlesize': 'bundlesize',
       'depcheck': 'depcheck',
       'knip': 'knip',
-      'pkg-scaffold': 'pkg-scaffold'
+      'loui': 'loui'
     };
 
     this.configFileToPackageMap = {

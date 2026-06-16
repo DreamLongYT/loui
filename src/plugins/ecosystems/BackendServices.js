@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * Backend Services Plugins for pkg-scaffold v4.0.0
+ * Backend Services Plugins for loui v4.0.0
  * ============================================================================
  * Built-in support for GraphQL, REST APIs, and Databases.
  */

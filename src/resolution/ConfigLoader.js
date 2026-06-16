@@ -3,7 +3,7 @@ import path from 'path';
 import { pathToFileURL } from 'url';
 
 /**
- * Loads and parses pkg-scaffold configuration files.
+ * Loads and parses loui configuration files.
  * Supports scaffold.config.js, .scaffoldrc.json, and .scaffoldrc.
  */
 export class ConfigLoader {
@@ -13,13 +13,13 @@ export class ConfigLoader {
 
   async loadConfig(projectRoot) {
     const searchPaths = [
-      'pkg-scaffold.json',
-      'pkg-scaffold.jsonc',
-      '.pkg-scaffold.json',
-      '.pkg-scaffold.jsonc',
-      'pkg-scaffold.js',
-      'pkg-scaffold.ts',
-      'pkg-scaffold/config.json',
+      'loui.json',
+      'loui.jsonc',
+      '.loui.json',
+      '.loui.jsonc',
+      'loui.js',
+      'loui.ts',
+      'loui/config.json',
       'scaffold.config.js',
       'scaffold.config.mjs',
       '.scaffoldrc.json',
@@ -33,8 +33,8 @@ export class ConfigLoader {
       const pkgPath = path.join(projectRoot, 'package.json');
       const pkgContent = await fs.readFile(pkgPath, 'utf8');
       const pkg = JSON.parse(pkgContent);
-      if (pkg['pkg-scaffold']) {
-        Object.assign(config, pkg['pkg-scaffold']);
+      if (pkg['loui']) {
+        Object.assign(config, pkg['loui']);
       }
     } catch (e) {
       // ignore

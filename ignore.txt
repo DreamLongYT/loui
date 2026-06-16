@@ -10,7 +10,6 @@ import { SecretScanner } from './ast/SecretScanner.js';
  */
 
 import fs from 'fs/promises';
-import { existsSync, readFileSync } from 'fs'; 
 import path from 'path';
 import ansis from 'ansis';
 import readline from 'readline/promises';
@@ -176,7 +175,7 @@ export class RefactoringEngine {
         })) {
           node.isLibraryEntry = true;
         }
-        // node.externalPackageUsage.forEach(pkg => this.context.usedExternalPackages.add(pkg));
+        node.externalPackageUsage.forEach(pkg => this.context.usedExternalPackages.add(pkg));
       }
 
       // Fix: Automatically mark active ecosystem packages as used.
@@ -251,52 +250,30 @@ export class RefactoringEngine {
       // Pass 5: Compile metrics summary and print diagnostics report
       
       // =========================================================================
-      // 🛡️ UNIFORM SLASH GRAPH EDGE RECONCILIATION LAYER (FINAL STABLE PRODUCTION)
+      // 🛡️ RECONCILED CENTRAL GRAPH SCRAPER AND LAYERING ENGINE
       // =========================================================================
       if (!this.context.exportRegistry) this.context.exportRegistry = new Map();
       if (!this.context.importUsageRegistry) this.context.importUsageRegistry = new Set();
-      if (!this.context.consumedRootPackages) this.context.consumedRootPackages = new Set();
-      if (!this.context.consumedWorkspacePackages) this.context.consumedWorkspacePackages = new Set();
-      if (!this.context.unlistedDependencies) this.context.unlistedDependencies = [];
-
-      // Simple internal helper to guarantee matching forward slash strings across all platforms
-      const slashify = (p) => path.resolve(this.context.cwd, p).replace(/\\/g, '/');
 
       if (this.context.projectGraph && typeof this.context.projectGraph.entries === 'function') {
         for (const [filePath, fileNode] of this.context.projectGraph.entries()) {
           if (!fileNode) continue;
           
-          const cleanFilePath = slashify(filePath);
+          const normalizedFilePath = path.normalize(filePath);
 
-          // 🚀 ROOT DEPS HARVESTER SHADOW TRACKING:
-          // If external packages are parsed from ANY file node in the monorepo, 
-          // ensure the auditor registries register their footprint so root checking works!
-          if (fileNode.externalPackageUsage) {
-            fileNode.externalPackageUsage.forEach(pkg => {
-              const relativeToRoot = path.relative(this.context.cwd, filePath);
-              if (relativeToRoot.startsWith('packages' + path.sep) || relativeToRoot.startsWith('packages/')) {
-                this.context.consumedWorkspacePackages.add(pkg);
-              } else {
-                this.context.consumedRootPackages.add(pkg);
-              }
-            });
-          }
-
-          // 1. Gather all file exports using unified slashes
           if (fileNode.internalExports) {
             const exportKeys = typeof fileNode.internalExports.keys === 'function'
               ? Array.from(fileNode.internalExports.keys())
               : Object.keys(fileNode.internalExports);
 
             if (exportKeys.length > 0) {
-              if (!this.context.exportRegistry.has(cleanFilePath)) {
-                this.context.exportRegistry.set(cleanFilePath, new Set());
+              if (!this.context.exportRegistry.has(normalizedFilePath)) {
+                this.context.exportRegistry.set(normalizedFilePath, new Set());
               }
-              exportKeys.forEach(key => this.context.exportRegistry.get(cleanFilePath).add(key));
+              exportKeys.forEach(key => this.context.exportRegistry.get(normalizedFilePath).add(key));
             }
           }
 
-          // 2. Gather cross-file usage tokens using unified slashes
           if (fileNode.explicitImports && fileNode.importedSymbols) {
             const symbolsArray = typeof fileNode.importedSymbols.forEach === 'function'
               ? Array.from(fileNode.importedSymbols)
@@ -319,71 +296,16 @@ export class RefactoringEngine {
                 }
               } else if (specifier.startsWith('.')) {
                 targetFile = path.resolve(path.dirname(filePath), specifier);
-                
-                // 🚀 COMPILE-TO-SOURCE EXTENSION SWAP:
-                // If a barrel file imports relative paths using compiled targets (like './used-fn.js'),
-                // replace the extension to check for active source components directly ('.ts' / '.tsx')
-                if (targetFile.endsWith('.js')) {
-                  targetFile = targetFile.slice(0, -3);
-                }
-
                 if (!path.extname(targetFile)) {
-                  if (existsSync(targetFile + '.ts')) targetFile += '.ts';
-                  else if (existsSync(targetFile + '.tsx')) targetFile += '.tsx';
-                  else if (existsSync(targetFile + '.js')) targetFile += '.js';
+                  const fsNative = require('fs');
+                  if (fsNative.existsSync(targetFile + '.ts')) targetFile += '.ts';
+                  else if (fsNative.existsSync(targetFile + '.tsx')) targetFile += '.tsx';
+                  else if (fsNative.existsSync(targetFile + '.js')) targetFile += '.js';
                 }
               }
 
               if (targetFile) {
-                // Enforce uniform forward slash formats on targets
-                const cleanTargetFile = Array.isArray(targetFile) ? slashify(targetFile[0]) : slashify(targetFile);
-                this.context.importUsageRegistry.add(`${cleanTargetFile}:${symbolName}`);
-              }
-            }
-          }
-        }
-      }
-
-      // 🚀 UNLISTED AUDITOR FALLBACK REMAPPING LAYER
-      if (this.workspaceGraph && this.workspaceGraph.packageManifests) {
-        for (const [_, metadata] of this.workspaceGraph.packageManifests.entries()) {
-          if (this.context.projectGraph) {
-            for (const [filePath, fileNode] of this.context.projectGraph.entries()) {
-              
-              const cleanRelative = path.relative(metadata.rootDirectory, filePath).replace(/\\/g, '/');
-              
-              if (!cleanRelative.startsWith('..') && !cleanRelative.startsWith('/') && fileNode.explicitImports) {
-                try {
-                  // 💎 FIXED: Completely removed 'require' call and switched to native sync token
-                  const localManifest = JSON.parse(readFileSync(metadata.manifestPath, 'utf8'));
-                  const localDeps = new Set([
-                    ...Object.keys(localManifest.dependencies || {}),
-                    ...Object.keys(localManifest.devDependencies || {}),
-                    ...Object.keys(localManifest.peerDependencies || {})
-                  ]);
-
-                  fileNode.explicitImports.forEach(specifier => {
-                    if (specifier.startsWith('.') || specifier.startsWith('/')) return;
-                    const basePkg = specifier.startsWith('@') ? specifier.split('/').slice(0, 2).join('/') : specifier.split('/')[0];
-                    
-                    // 💎 FIXED: Ensure lookups scan local package configurations only
-                    if (!localDeps.has(basePkg)) {
-                      const alreadyFlagged = this.context.unlistedDependencies.some(u => u.package === basePkg && u.file === filePath);
-                      if (!alreadyFlagged) {
-                        this.context.unlistedDependencies.push({
-                          package: basePkg,
-                          file: path.relative(this.context.cwd, filePath),
-                          manifest: path.relative(this.context.cwd, metadata.manifestPath)
-                        });
-                      }
-                    }
-                  });
-                } catch (error) {
-                  // Dev logging fallback just in case JSON.parse hits bad layout characters
-                  if (this.context.options.verbose) {
-                    console.error(ansis.red(`      ❌ Manifest Parsing Exception: ${error.message}`));
-                  }
-                }
+                this.context.importUsageRegistry.add(`${path.normalize(targetFile)}:${symbolName}`);
               }
             }
           }
@@ -399,14 +321,14 @@ export class RefactoringEngine {
         for (const [_, metadata] of this.workspaceGraph.packageManifests.entries()) {
           if (metadata.entryPoints) {
             metadata.entryPoints.forEach(absolutePath => {
-              verifiedSeeds.add(slashify(absolutePath));
+              verifiedSeeds.add(path.normalize(absolutePath));
             });
           }
         }
 
         this.context.orphanedFiles = this.context.orphanedFiles.filter(flaggedFile => {
-          const absoluteFlaggedPath = slashify(flaggedFile);
-          const isAGraphSeed = verifiedSeeds.has(absoluteFlaggedPath);
+          const absoluteFlaggedPath = path.resolve(this.context.cwd, flaggedFile);
+          const isAGraphSeed = verifiedSeeds.has(path.normalize(absoluteFlaggedPath));
           return !isAGraphSeed;
         });
       }
@@ -433,11 +355,10 @@ export class RefactoringEngine {
       try {
         const fsNative = require('fs');
         const rootPkgPath = path.join(this.context.cwd, 'package.json');
-        const rootPkg = JSON.parse(readFileSync(rootPkgPath, 'utf8'));
+        const rootPkg = JSON.parse(fsNative.readFileSync(rootPkgPath, 'utf8'));
         const rootDeps = Object.keys(rootPkg.dependencies || {});
         
         for (const dep of rootDeps) {
-          // Fix: Evaluate both root and workspace tracking sets to find shadowed root dependencies
           const usedInRoot = this.context.consumedRootPackages?.has(dep);
           const usedInWorkspaces = this.context.consumedWorkspacePackages?.has(dep);
           
@@ -453,7 +374,7 @@ export class RefactoringEngine {
             if (!alreadyLogged) {
               analysisSummary.unusedDependencies.push(structuralViolation);
             }
-          }
+          }          
         }
       } catch (e) {}
 
@@ -461,16 +382,11 @@ export class RefactoringEngine {
       analysisSummary.deadExports = [];
       if (this.context.exportRegistry && this.workspaceGraph) {
         for (const [exportedFile, exportsSet] of this.context.exportRegistry.entries()) {
-          const cleanExportedFile = slashify(exportedFile);
-          const relativeExportedFile = path.relative(this.context.cwd, cleanExportedFile);
-
-          if (analysisSummary.orphanedFiles.includes(relativeExportedFile)) {
-            continue;
-          }
+          const normalizedExportedFile = path.normalize(exportedFile);
           
           let isPackageEntryPoint = false;
           for (const [_, metadata] of this.workspaceGraph.packageManifests.entries()) {
-            if (metadata.entryPoints.map(p => slashify(p)).includes(cleanExportedFile)) {
+            if (metadata.entryPoints.map(p => path.normalize(p)).includes(normalizedExportedFile)) {
               isPackageEntryPoint = true;
               break;
             }
@@ -478,19 +394,22 @@ export class RefactoringEngine {
           if (isPackageEntryPoint) continue;
 
           for (const symbol of exportsSet) {
-            const consumptionToken = `${cleanExportedFile}:${symbol}`;
+            const consumptionToken = `${normalizedExportedFile}:${symbol}`;
             if (!this.context.importUsageRegistry?.has(consumptionToken)) {
               analysisSummary.deadExports.push({
                 symbol: symbol,
-                file: relativeExportedFile,
+                file: path.relative(this.context.cwd, normalizedExportedFile),
                 line: 7
               });
             }
           }
         }
       }
+
       analysisSummary.unlistedDependencies = this.context.unlistedDependencies || [];
       
+      const structuralModificationsStaged = 
+      // Declare staging metrics using the fully updated analysisSummary
       const structuralModificationsStaged = 
           analysisSummary.orphanedFiles.length > 0 || 
           analysisSummary.deadExports.length > 0 ||
@@ -512,21 +431,16 @@ export class RefactoringEngine {
           analysisSummary.deadExports.forEach(e => console.log(ansis.dim(`    • ${e.symbol} in ${e.file}:${e.line}`)));
         }
 
-        if (analysisSummary.unusedDependencies && analysisSummary.unusedDependencies.length > 0) {
+        if (analysisSummary.unusedDependencies.length > 0) {
           console.log(ansis.bold(`  📦 Remove ${analysisSummary.unusedDependencies.length} unused dependencies:`));
-          analysisSummary.unusedDependencies.forEach(d => {
-            console.log(ansis.dim(`    • ${d.package} (${d.type} in ${d.manifest})`));
-          }); // 💎 FIXED: Added the missing closing block brace and parenthesis
-        } // 💎 FIXED: Added the missing closing brace for the parent if-statement
-
-        // 🚨 TARGET BUG 2: Print Alert layout warning for your unlisted package detections!
-        if (analysisSummary.unlistedDependencies && analysisSummary.unlistedDependencies.length > 0) {
-          console.log(ansis.bold.red(`  ⚠️  Missing Declarations (Unlisted Packages Detected):`));
-          analysisSummary.unlistedDependencies.forEach(u => {
-            console.log(ansis.dim(`    • ${u.package} is imported in ${u.file} but missing from ${u.manifest}`));
-          });
+          analysisSummary.unusedDependencies.forEach(d => console.log(ansis.dim(`    • ${d.package} (${d.type} in ${d.manifest})`)));
         }
 
+        // 🚨 TARGET BUG 2: Print Alert layout warning for your unlisted package detections!
+        if (analysisSummary.unlistedDependencies.length > 0) {
+          console.log(ansis.bold.red(`  ⚠️  Missing Declarations (Unlisted Packages Detected):`));
+          analysisSummary.unlistedDependencies.forEach(u => console.log(ansis.dim(`    • ${u.package} is imported in ${u.file} but missing from ${u.manifest}`)));
+        }
         console.log(ansis.dim('------------------------------------------------------------'));
 
         if (this.context.options.fix) {
@@ -584,7 +498,7 @@ export class RefactoringEngine {
     for (const entry of entries) {
       const res = path.resolve(dir, entry.name);
       if (entry.isDirectory()) {
-        if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === '.loui-cache') continue;
+        if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === '.scaffold-cache') continue;
         if (this.context.verbose) console.log(ansis.dim(`📂 Scanning deep folder: ${res}`));
         await this.discoverSourceFiles(res, fileList);
       } else {
@@ -646,6 +560,8 @@ export class RefactoringEngine {
           if (traceResolution && this.context.projectGraph.has(traceResolution.originFile)) {
             this.context.projectGraph.get(traceResolution.originFile).incomingEdges.add(filePath);
             node.outgoingEdges.add(traceResolution.originFile);
+            // Fix: Store the absolute resolution in importedSymbols so isSymbolReferencedExternally can find it
+            // Use the traced symbol name (in case of re-exports with renaming)
             node.importedSymbols.add(`${traceResolution.originFile}:${traceResolution.symbolName}`);
           }
         }

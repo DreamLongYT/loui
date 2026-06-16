@@ -2,7 +2,7 @@
 
 ## Overview
 
-Impact Analysis in pkg-scaffold v4.0 provides a "crystal ball" view of your codebase. It allows you to see exactly how a proposed change will ripple through your system, helping you avoid regressions and make informed decisions about refactoring.
+Impact Analysis in loui v4.0 provides a "crystal ball" view of your codebase. It allows you to see exactly how a proposed change will ripple through your system, helping you avoid regressions and make informed decisions about refactoring.
 
 ## Features
 
@@ -49,7 +49,7 @@ if (impact.refactorSafety.isSafeToPrune) {
 When using the CLI with the `--impact` flag, the engine generates a report showing the affected modules:
 
 ```bash
-npx pkg-scaffold --impact src/utils/format.ts
+npx loui --impact src/utils/format.ts
 ```
 
 **Output:**

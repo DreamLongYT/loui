@@ -18,7 +18,7 @@ export class PluginRegistry {
     }
 
     async init(projectRoot) {
-        const configPath = path.join(projectRoot, 'pkg-scaffold', 'config.json');
+        const configPath = path.join(projectRoot, 'loui', 'config.json');
         try {
             const configRaw = await fs.readFile(configPath, 'utf8');
             this.config = JSON.parse(configRaw);
@@ -96,7 +96,7 @@ export class PluginRegistry {
     }
 
     async loadCustomPlugins(projectRoot) {
-        const pluginsDir = path.join(projectRoot, 'pkg-scaffold', 'plugins');
+        const pluginsDir = path.join(projectRoot, 'loui', 'plugins');
         try {
             const entries = await fs.readdir(pluginsDir, { withFileTypes: true });
             for (const entry of entries) {

@@ -2,7 +2,7 @@
 
 /**
  * ============================================================================
- * 🏁 pkg-scaffold CLI Entry Point
+ * 🏁 loui CLI Entry Point
  * ============================================================================
  * Handles option compilation, environment orchestration, option validation,
  * and initiates the primary operational pipeline loop.
@@ -26,12 +26,13 @@ async function bootstrap() {
     const packageJsonContent = JSON.parse(await fs.readFile(packageJsonPath, 'utf8'));
 
     program
-      .name('pkg-scaffold')
+      .name('loui')
       .description(ansis.cyan('Enterprise-Grade AST Syntax Refactoring & Self-Healing Engine'))
-      .version(packageJsonContent.version || '3.3.9');
+      .version(packageJsonContent.version || '4.0.0');
 
     program
       .option('-c, --cwd <path>', 'Specify the execution context root directory', process.cwd())
+      .option('-d, --debug', 'Developer`s comprehensive telemetry debug diagnostics', false)
       .option('--fix', 'Enable atomic code updates, structural file pruning, and active type sanitization', true)
       .option('--no-fix', 'Disable direct file manipulation modifications (dry-run reporting mode)')
       .option('--tsconfig <filename>', 'Specify path to custom layout configurations', 'tsconfig.json')
@@ -51,7 +52,7 @@ async function bootstrap() {
     // FIX: Ensure options.cwd is always a string, never undefined
     const targetCwd = path.resolve(options.cwd || process.cwd());
     const pkgJsonPath = path.join(targetCwd, 'package.json');
-    const configDirPath = path.join(targetCwd, 'pkg-scaffold');
+    const configDirPath = path.join(targetCwd, 'loui');
 
     let pkgJson;
     try {
@@ -61,13 +62,13 @@ async function bootstrap() {
     let configInstalled = false;
     if (!options.yes && !options.run) {
       // 1. Ask to install script
-      if (pkgJson && !pkgJson.scripts?.['pkg-scaffold:run']) {
-        const answer = await rl.question(ansis.bold.yellow('❓ No "pkg-scaffold:run" script found in package.json. Install it? (y/n): '));
+      if (pkgJson && !pkgJson.scripts?.['loui:run']) {
+        const answer = await rl.question(ansis.bold.yellow('❓ No "loui:run" script found in package.json. Install it? (y/n): '));
         if (answer.toLowerCase() === 'y') {
           pkgJson.scripts = pkgJson.scripts || {};
-          pkgJson.scripts['pkg-scaffold:run'] = 'npx pkg-scaffold --fix';
+          pkgJson.scripts['loui:run'] = 'npx loui --fix';
           await fs.writeFile(pkgJsonPath, JSON.stringify(pkgJson, null, 2));
-          console.log(ansis.green('✅ "pkg-scaffold:run" script added to package.json.'));
+          console.log(ansis.green('✅ "loui:run" script added to package.json.'));
         }
       }
 
@@ -76,7 +77,7 @@ async function bootstrap() {
         await fs.access(configDirPath);
         configInstalled = true;
       } catch (e) {
-        const answer = await rl.question(ansis.bold.yellow('❓ No "/pkg-scaffold" configuration folder found. Create it with defaults? (y/n): '));
+        const answer = await rl.question(ansis.bold.yellow('❓ No "/loui" configuration folder found. Create it with defaults? (y/n): '));
         if (answer.toLowerCase() === 'y') {
           await fs.mkdir(configDirPath, { recursive: true });
           await fs.mkdir(path.join(configDirPath, 'plugins'), { recursive: true });
@@ -89,15 +90,15 @@ async function bootstrap() {
             enabledPlugins: ["nextjs", "nuxt", "remix", "sveltekit", "astro"]
           };
           await fs.writeFile(path.join(configDirPath, 'config.json'), JSON.stringify(defaultConfig, null, 2));
-          console.log(ansis.green('✅ "/pkg-scaffold" folder and default config created.'));
+          console.log(ansis.green('✅ "/loui" folder and default config created.'));
           configInstalled = true;
         }
       }
 
-      if (pkgJson?.scripts?.['pkg-scaffold:run'] || configInstalled) {
+      if (pkgJson?.scripts?.['loui:run'] || configInstalled) {
         console.log(ansis.bold.cyan('\n🚀 Setup complete! To start the engine, run:'));
-        console.log(ansis.white(`   - npx pkg-scaffold -r`));
-        console.log(ansis.white(`   - npm run pkg-scaffold:run\n`));
+        console.log(ansis.white(`   - npx loui -r`));
+        console.log(ansis.white(`   - npm run loui:run\n`));
       }
     }
 
@@ -131,7 +132,7 @@ async function bootstrap() {
     }, timeoutMs);
     timeoutTimer.unref(); // Allow process to exit if work finishes
 
-    console.log(ansis.bold.green(`\n📦 pkg-scaffold v${packageJsonContent.version || '3.3.9'} Engine Activation`));
+    console.log(ansis.bold.green(`\n📦 loui v${packageJsonContent.version || '4.0.0'} Engine Activation`));
     console.log(ansis.dim('------------------------------------------------------------'));
     console.log(`${ansis.bold('Target Workspace Root :')} ${ansis.blue(targetCwd)}`);
     console.log(`${ansis.bold('Refactoring Mode     :')} ${options.fix ? ansis.yellow('Active Fixing & Self-Healing Enabled') : ansis.gray('Dry-Run Reporting Only')}`);
@@ -151,7 +152,8 @@ async function bootstrap() {
       // Pass through local config settings
       entryPoints: localConfig.entryPoints,
       exclude: localConfig.exclude,
-      rules: localConfig.rules
+      rules: localConfig.rules,
+      debug: options.debug,
     });
 
     await engine.run();

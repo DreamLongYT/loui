@@ -2,7 +2,7 @@
 
 ## Overview
 
-To get the most out of pkg-scaffold v3.3.14, follow these best practices for project structure, configuration, and workflow integration.
+To get the most out of loui v3.3.15, follow these best practices for project structure, configuration, and workflow integration.
 
 ## Project Structure
 
@@ -18,7 +18,7 @@ Use consistent file extensions (`.ts`, `.tsx`, `.js`, `.jsx`) to help the engine
 ## Configuration
 
 ### 1. Use `.gitignore`
-pkg-scaffold automatically respects your `.gitignore` file. Ensure it is up to date to prevent the engine from scanning `node_modules`, build artifacts, or temporary files.
+loui automatically respects your `.gitignore` file. Ensure it is up to date to prevent the engine from scanning `node_modules`, build artifacts, or temporary files.
 
 ### 2. Tailor Your Plugins
 Only enable the plugins you actually need for your project. This reduces analysis time and prevents false positives from unrelated ecosystems.
@@ -30,22 +30,22 @@ Only enable the plugins you actually need for your project. This reduces analysi
 ```
 
 ### 3. Define Custom Aliases
-If you use complex path aliases (e.g., in `tsconfig.json` or `vite.config.js`), ensure they are correctly mapped in your pkg-scaffold configuration if the auto-detection fails.
+If you use complex path aliases (e.g., in `tsconfig.json` or `vite.config.js`), ensure they are correctly mapped in your loui configuration if the auto-detection fails.
 
 ## Workflow Integration
 
 ### 1. Run in CI/CD
-Integrate pkg-scaffold into your CI/CD pipeline to ensure that dead code never reaches your main branch. Use the `--check` flag to fail the build if issues are found.
+Integrate loui into your CI/CD pipeline to ensure that dead code never reaches your main branch. Use the `--check` flag to fail the build if issues are found.
 
 ```bash
-npx pkg-scaffold --check
+npx loui --check
 ```
 
 ### 2. Use "Review Mode"
-When first adopting pkg-scaffold on a large legacy codebase, use it without the `--fix` flag first. Review the generated report and apply changes incrementally.
+When first adopting loui on a large legacy codebase, use it without the `--fix` flag first. Review the generated report and apply changes incrementally.
 
 ### 3. Leverage Git Integration
-Always run pkg-scaffold on a clean git state. The engine's "Self-Healing" relies on git to create temporary sandboxes and perform rollbacks if tests fail.
+Always run loui on a clean git state. The engine's "Self-Healing" relies on git to create temporary sandboxes and perform rollbacks if tests fail.
 
 ## Coding Patterns
 

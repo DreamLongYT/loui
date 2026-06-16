@@ -1,8 +1,8 @@
 /**
  * ============================================================================
- * Knip Plugin Adapter for pkg-scaffold v4.0.0
+ * Knip Plugin Adapter for loui v4.0.0
  * ============================================================================
- * This adapter allows pkg-scaffold to use existing Knip plugins without
+ * This adapter allows loui to use existing Knip plugins without
  * requiring knip as a dependency. It implements the Knip plugin interface
  * internally to ensure full compatibility.
  */
@@ -38,7 +38,7 @@ export class KnipAdapter {
   }
 
   /**
-   * Loads a specific Knip plugin and wraps it for pkg-scaffold
+   * Loads a specific Knip plugin and wraps it for loui
    */
   async loadPlugin(pluginPath) {
     try {
@@ -57,7 +57,7 @@ export class KnipAdapter {
   }
 
   /**
-   * Wraps a Knip plugin to match the pkg-scaffold BasePlugin interface
+   * Wraps a Knip plugin to match the loui BasePlugin interface
    */
   wrapKnipPlugin(knipPlugin) {
     return {
@@ -90,7 +90,7 @@ export class KnipAdapter {
         return false;
       },
       
-      // Map other Knip plugin properties to pkg-scaffold
+      // Map other Knip plugin properties to loui
       get: (key) => knipPlugin[key]
     };
   }

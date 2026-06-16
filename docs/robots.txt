@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://dreamlongyt.github.io/pkg-scaffold/sitemap.xml
+Sitemap: https://dreamlongyt.github.io/loui/sitemap.xml

@@ -3,7 +3,7 @@ import fs from 'fs/promises';
 import { BasePlugin } from '../BasePlugin.js';
 
 /**
- * TypeScript Plugin for pkg-scaffold.
+ * TypeScript Plugin for loui.
  * Handles tsconfig.json detection and TypeScript-specific entry points.
  */
 export class TypeScriptPlugin extends BasePlugin {

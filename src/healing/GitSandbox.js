@@ -50,7 +50,7 @@ export class GitSandbox {
   async commit() {
     try {
       await execa('git', ['add', '.'], { cwd: this.context.cwd });
-      await execa('git', ['commit', '-m', 'chore: automated structural healing (pkg-scaffold)'], { cwd: this.context.cwd });
+      await execa('git', ['commit', '-m', 'chore: automated structural healing (loui)'], { cwd: this.context.cwd });
       
       await execa('git', ['checkout', this.initialBranch], { cwd: this.context.cwd });
       await execa('git', ['merge', this.healingBranch], { cwd: this.context.cwd });

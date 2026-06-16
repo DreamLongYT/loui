@@ -9,7 +9,7 @@ import crypto from 'crypto';
 export class IncrementalCacheManager {
   constructor(context) {
     this.context = context;
-    this.manifestPath = path.join(context.cacheDir || path.join(context.cwd, '.scaffold-cache'), 'graph-manifest.json');
+    this.manifestPath = path.join(context.cacheDir || path.join(context.cwd, '.loui-cache'), 'graph-manifest.json');
   }
 
   /**

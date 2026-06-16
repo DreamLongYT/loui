@@ -143,17 +143,71 @@ export class ASTAnalyzer {
         fileNode.externalPackageUsage.add(this._extractPackageName(specifier));
       }
 
+      // 🚨 TARGET BUG 1 & 2: Audit package requirements for unlisted or root dependencies
+      if (this.context.workspaceGraph && typeof this.context.workspaceGraph.auditImportSpecifier === 'function') {
+        this.context.workspaceGraph.auditImportSpecifier(specifier, sourceFile.fileName);
+      }
+
       if (node.importClause) {
+        // Initialize global tracking structures on the engine context if missing
+        if (!this.context.importUsageRegistry) this.context.importUsageRegistry = new Set();
+
+        // Cross-file import resolver function
+        const resolveAbsoluteTargetFile = (spec) => {
+          // If importing a local workspace monorepo module (e.g. '@monorepo/shared')
+          if (this.context.workspaceGraph && typeof this.context.workspaceGraph.isLocalWorkspaceSpecifier === 'function') {
+            if (this.context.workspaceGraph.isLocalWorkspaceSpecifier(spec)) {
+              const match = this.context.workspaceGraph.getWorkspacePackageMatch(spec);
+              // Grab the first entry point file calculated from its local tsconfig/package.json
+              if (match && match.entryPoints && match.entryPoints.length > 0) {
+                return match.entryPoints[0];
+              }
+            }
+          }
+          // Fallback to relative file layout calculations
+          if (spec.startsWith('.')) {
+            const pathNative = require('path');
+            let resolved = pathNative.resolve(pathNative.dirname(sourceFile.fileName), spec);
+            // Append standard extensions if missing from import string
+            if (!pathNative.extname(resolved)) {
+              const fsNative = require('fs');
+              if (fsNative.existsSync(resolved + '.ts')) resolved += '.ts';
+              else if (fsNative.existsSync(resolved + '.tsx')) resolved += '.tsx';
+              else if (fsNative.existsSync(resolved + '.js')) resolved += '.js';
+            }
+            return resolved;
+          }
+          return null;
+        };
+
         if (node.importClause.name) {
           fileNode.importedSymbols.add(`${specifier}:default`);
+          
+          // Trace default consumption targets
+          const targetFile = resolveAbsoluteTargetFile(specifier);
+          if (targetFile) {
+            this.context.importUsageRegistry.add(`${targetFile}:default`);
+          }
         }
+
         if (node.importClause.namedBindings) {
           if (ts.isNamespaceImport(node.importClause.namedBindings)) {
             fileNode.importedSymbols.add(`${specifier}:*`);
+            
+            const targetFile = resolveAbsoluteTargetFile(specifier);
+            if (targetFile) {
+              this.context.importUsageRegistry.add(`${targetFile}:*`);
+            }
           } else if (ts.isNamedImports(node.importClause.namedBindings)) {
             node.importClause.namedBindings.elements.forEach(element => {
               const importedName = element.propertyName ? element.propertyName.text : element.name.text;
               fileNode.importedSymbols.add(`${specifier}:${importedName}`);
+
+              // 🚨 TARGET BUG 3: Map the unique file:symbol consumption token
+              const targetFile = resolveAbsoluteTargetFile(specifier);
+              if (targetFile) {
+                this.context.importUsageRegistry.add(`${targetFile}:${importedName}`);
+              }
             });
           }
         }
@@ -206,6 +260,16 @@ export class ASTAnalyzer {
       const isDefault = node.modifiers?.some(m => m.kind === ts.SyntaxKind.DefaultKeyword);
       const name = isDefault ? 'default' : (node.name?.text || 'anonymous');
       
+      // 🚨 TARGET BUG 3 (Part B): Extract exported symbol tokens into your global context map
+      if (!this.context.exportRegistry) this.context.exportRegistry = new Map();
+      const currentFile = sourceFile.fileName;
+      if (!this.context.exportRegistry.has(currentFile)) {
+        this.context.exportRegistry.set(currentFile, new Set());
+      }
+      if (name !== 'anonymous') {
+        this.context.exportRegistry.get(currentFile).add(name);
+      }
+
       const exportInfo = {
         type: ts.SyntaxKind[node.kind].toLowerCase().replace('declaration', ''),
         start: node.getStart(sourceFile),

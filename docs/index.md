@@ -2,19 +2,19 @@
 layout: home
 
 hero:
-  name: pkg-scaffold v3.3.14
+  name: loui v3.3.15
   text: The Ultimate Enterprise Codebase Janitor
   tagline: Solving what Knip cannot. Circular-Aware & Self-Healing.
   image:
     src: /logo.png
-    alt: pkg-scaffold
+    alt: loui
   actions:
     - theme: brand
       text: Get Started
       link: /guide
     - theme: alt
       text: View on GitHub
-      link: https://github.com/DreamLongYT/pkg-scaffold
+      link: https://github.com/DreamLongYT/loui
 
 features:
   - title: Comprehensive Analysis
@@ -31,11 +31,11 @@ features:
     details: Detect hardcoded secrets, API keys, and sensitive data automatically during analysis.
 ---
 
-## Why pkg-scaffold?
+## Why loui?
 
 In large-scale enterprise projects, codebases naturally accumulate "cruft" – unused files, orphaned exports, and redundant dependencies. This "dead code" increases bundle sizes, slows down build times, and makes the codebase harder to maintain.
 
-**pkg-scaffold** is not just another analysis tool. It's a proactive **Janitor** for your code. It doesn't just tell you what's wrong; it provides the tools to fix it automatically and safely.
+**loui** is not just another analysis tool. It's a proactive **Janitor** for your code. It doesn't just tell you what's wrong; it provides the tools to fix it automatically and safely.
 
 ### Key Benefits
 
@@ -48,7 +48,7 @@ In large-scale enterprise projects, codebases naturally accumulate "cruft" – u
 
 ## Quick Comparison
 
-| Feature | pkg-scaffold | Knip.dev |
+| Feature | loui | Knip.dev |
 | :--- | :---: | :---: |
 | Dead Code Detection | ✅ | ✅ |
 | Auto-Fix / Refactoring | ✅ | ⚠️ |
@@ -59,9 +59,9 @@ In large-scale enterprise projects, codebases naturally accumulate "cruft" – u
 
 ## Quick Test
 
-### pkg-scaffold v3.3.7
+### loui v3.3.7
 
-> **📦 pkg-scaffold v3.3.7 Engine Activation**
+> **📦 loui v3.3.7 Engine Activation**
 
 ```
 Target Workspace Root : E:\Download\final-test-package
@@ -69,7 +69,7 @@ Refactoring Mode     : Dry-Run Reporting Only
 Validation Sandbox   : npm test
 ```
 
-> **🎯 Starting pkg-scaffold Operational Optimization Cycle...**
+> **🎯 Starting loui Operational Optimization Cycle...**
 
 ```
 🔗 Linking graph edges and checking structural usage paths...
@@ -158,7 +158,7 @@ unused-lib  package.json:14:6
 > **Unlisted binaries (1)**
 
 ```
-pkg-scaffold  package.json
+loui  package.json
 ```
 
 > **Configuration hints (1)**
@@ -169,6 +169,6 @@ src/index.ts    package.json  Package entry file not found
 
 ## Community & Support
 
-- **GitHub**: [DreamLongYT/pkg-scaffold](https://github.com/DreamLongYT/pkg-scaffold)
-- **NPM**: [pkg-scaffold](https://www.npmjs.com/package/pkg-scaffold)
+- **GitHub**: [DreamLongYT/loui](https://github.com/DreamLongYT/loui)
+- **NPM**: [loui](https://www.npmjs.com/package/loui)
 - **License**: Apache-2.0 (The original code was from the lovely DreamLong)

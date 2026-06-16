@@ -159,7 +159,7 @@ export class EngineContext {
       
       for (const dep of allDeps) {
         // Skip @types packages and known safe packages
-        if (dep.startsWith('@types/') || dep === 'pkg-scaffold') {
+        if (dep.startsWith('@types/') || dep === 'loui') {
           continue;
         }
         

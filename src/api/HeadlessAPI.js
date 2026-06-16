@@ -1,8 +1,8 @@
 /**
  * ============================================================================
- * Headless API for pkg-scaffold v4.0.0
+ * Headless API for loui v4.0.0
  * ============================================================================
- * Provides a programmatic interface for integrating pkg-scaffold into
+ * Provides a programmatic interface for integrating loui into
  * custom workflows, CI/CD pipelines, and third-party tools.
  * 
  * Features:
