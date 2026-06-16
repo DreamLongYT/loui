@@ -1,5 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
+import crypto from 'crypto';
 
 /**
  * Transactional File System Operations Supervisor
@@ -40,7 +41,7 @@ export class TransactionManager {
       await fs.access(filePath);
       originalContent = await fs.readFile(filePath, 'utf8');
       
-      const fileId = Buffer.from(filePath).toString('base64url');
+      const fileId = crypto.createHash('sha256').update(filePath).digest('hex');
       backupPath = path.join(this.backupDirectory, `${fileId}.bak`);
       await fs.writeFile(backupPath, originalContent, 'utf8');
     } catch {
@@ -66,7 +67,7 @@ export class TransactionManager {
     
     // Read previous state data for archiving before dropping linkage
     const originalContent = await fs.readFile(filePath, 'utf8');
-    const fileId = Buffer.from(filePath).toString('base64url');
+    const fileId = crypto.createHash('sha256').update(filePath).digest('hex');
     const backupPath = path.join(this.backupDirectory, `${fileId}.bak`);
     
     await fs.writeFile(backupPath, originalContent, 'utf8');
@@ -108,9 +109,13 @@ export class TransactionManager {
         if (record.type === 'CREATE') {
           await fs.unlink(record.targetFile).catch(() => {});
         } else if (record.type === 'UPDATE' || record.type === 'DELETE') {
-          const originalContent = await fs.readFile(record.backupLocation, 'utf8');
-          await fs.writeFile(record.targetFile, originalContent, 'utf8');
-          await fs.unlink(record.backupLocation).catch(() => {});
+          try {
+            const originalContent = await fs.readFile(record.backupLocation, 'utf8');
+            await fs.writeFile(record.targetFile, originalContent, 'utf8');
+            await fs.unlink(record.backupLocation).catch(() => {});
+          } catch (e) {
+            console.warn(`[Transaction] Rollback failed for ${record.targetFile}: ${e.message}`);
+          }
         }
       }
     } finally {

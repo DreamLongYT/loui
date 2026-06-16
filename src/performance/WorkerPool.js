@@ -76,6 +76,12 @@ export class WorkerPool {
             node.symbolSourceLocations.set(k, v);
           });
         }
+
+        // Fix: Restore missing framework/syntax signals to prevent false positives in large projects
+        if (result.jsxComponents) result.jsxComponents.forEach(c => node.jsxComponents.add(c));
+        if (result.jsxProps) result.jsxProps.forEach(p => node.jsxProps.add(p));
+        if (result.decorators) result.decorators.forEach(d => node.decorators.add(d));
+        if (result.isFrameworkContract) node.isFrameworkContract = true;
       });
 
       return true;

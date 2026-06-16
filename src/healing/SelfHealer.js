@@ -23,11 +23,14 @@ export class SelfHealer {
       // 1. Capture current stable state
       await this.gitSandbox.captureState();
 
+      // 1b. Initialize transaction tracking
+      await this.txManager.begin();
+
       // 2. Execute the provided refactoring logic (staging deletions/writes)
       await refactorLogic();
 
       // 3. Commit staged changes to disk
-      await this.txManager.commitAll();
+      await this.txManager.commit();
 
       // 4. Verify structural integrity (e.g., run tests)
       console.log(ansis.dim('🧪 Verifying codebase integrity...'));

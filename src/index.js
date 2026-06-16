@@ -146,9 +146,9 @@ export class RefactoringEngine {
           this.context.metrics.cacheMisses++;
           const fileContent = await fs.readFile(filePath, 'utf8'); // Read file content here
           if (this.oxcAnalyzer.isAvailable) {
-            this.oxcAnalyzer.parseFile(filePath, fileContent, node);
+            await this.oxcAnalyzer.parseFile(filePath, fileContent, node);
           } else {
-            this.analyzer.parseFile(filePath, fileContent, node);
+            await this.analyzer.parseFile(filePath, fileContent, node);
           }
           // Secret scan on freshly parsed content
           const secretFindings = this.secretScanner.scanFileContent(filePath, fileContent);
@@ -158,7 +158,15 @@ export class RefactoringEngine {
           }
         }
 
-        this.magicDetector.injectVirtualConsumerEdges(filePath, node, activeFrameworkEcosystems);
+        await this.magicDetector.injectVirtualConsumerEdges(filePath, node, activeFrameworkEcosystems);
+        
+        // Fix: Explicitly protect entry points defined in local configuration
+        if (this.context.entryPoints && this.context.entryPoints.some(ep => {
+          const absEp = path.resolve(this.context.cwd, ep);
+          return absEp === filePath || absEp === filePath.replace(/\.[^/.]+$/, "");
+        })) {
+          node.isLibraryEntry = true;
+        }
         node.externalPackageUsage.forEach(pkg => this.context.usedExternalPackages.add(pkg));
       }
 

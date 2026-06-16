@@ -146,7 +146,11 @@ async function bootstrap() {
       testCommand: options.testCommand,
       workspace: options.workspace,
       verbose: options.verbose,
-      skipConfirm: options.yes
+      skipConfirm: options.yes,
+      // Pass through local config settings
+      entryPoints: localConfig.entryPoints,
+      exclude: localConfig.exclude,
+      rules: localConfig.rules
     });
 
     await engine.run();
