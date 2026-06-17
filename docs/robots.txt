@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://dreamlongyt.github.io/loui/sitemap.xml
+Sitemap: https://dreamlongyt.github.io/entkapp/sitemap.xml

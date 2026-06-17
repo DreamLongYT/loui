@@ -77,7 +77,7 @@ export class ImpactAnalyzer {
         const resolutionPath = path.join(dir, ent.name);
         
         if (ent.isDirectory()) {
-          if (ent.name === 'node_modules' || ent.name === '.git' || ent.name === '.loui-cache' || ent.name === 'dist') continue;
+          if (ent.name === 'node_modules' || ent.name === '.git' || ent.name === '.entkapp-cache' || ent.name === 'dist') continue;
           await this.gatherMetadataFiles(resolutionPath, collected);
         } else if (ent.isFile()) {
           const actsAsMetaAsset = this.safetyOverlays.some(regex => regex.test(ent.name));

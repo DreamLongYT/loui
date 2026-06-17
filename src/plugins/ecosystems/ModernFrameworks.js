@@ -1,11 +1,13 @@
 /**
  * ============================================================================
- * Modern Frameworks Plugins for loui v4.0.0
+ * Modern Frameworks Plugins for entkapp v4.0.0
  * ============================================================================
  * Built-in support for React, Vue, Svelte, and Angular.
  */
 
 import { BasePlugin } from '../BasePlugin.js';
+import fs from 'fs/promises';
+import path from 'path';
 
 /**
  * React Ecosystem Plugin
@@ -21,7 +23,7 @@ export class ReactPlugin extends BasePlugin {
 
   async isActive(baseDir) {
     try {
-      const pkgJson = JSON.parse(await require('fs').promises.readFile(require('path').join(baseDir, 'package.json'), 'utf8'));
+      const pkgJson = JSON.parse(await fs.readFile(path.join(baseDir, 'package.json'), 'utf8'));
       return !!(pkgJson.dependencies?.react || pkgJson.devDependencies?.react);
     } catch {
       return false;
@@ -68,7 +70,7 @@ export class VuePlugin extends BasePlugin {
 
   async isActive(baseDir) {
     try {
-      const pkgJson = JSON.parse(await require('fs').promises.readFile(require('path').join(baseDir, 'package.json'), 'utf8'));
+      const pkgJson = JSON.parse(await fs.readFile(path.join(baseDir, 'package.json'), 'utf8'));
       return !!(pkgJson.dependencies?.vue || pkgJson.devDependencies?.vue);
     } catch {
       return false;
@@ -106,7 +108,7 @@ export class SveltePlugin extends BasePlugin {
 
   async isActive(baseDir) {
     try {
-      const pkgJson = JSON.parse(await require('fs').promises.readFile(require('path').join(baseDir, 'package.json'), 'utf8'));
+      const pkgJson = JSON.parse(await fs.readFile(path.join(baseDir, 'package.json'), 'utf8'));
       return !!(pkgJson.dependencies?.svelte || pkgJson.devDependencies?.svelte);
     } catch {
       return false;
@@ -138,7 +140,7 @@ export class AngularPlugin extends BasePlugin {
 
   async isActive(baseDir) {
     try {
-      const pkgJson = JSON.parse(await require('fs').promises.readFile(require('path').join(baseDir, 'package.json'), 'utf8'));
+      const pkgJson = JSON.parse(await fs.readFile(path.join(baseDir, 'package.json'), 'utf8'));
       return !!(pkgJson.dependencies?.['@angular/core'] || pkgJson.devDependencies?.['@angular/core']);
     } catch {
       return false;

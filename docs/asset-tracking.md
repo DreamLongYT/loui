@@ -2,7 +2,7 @@
 
 ## Overview
 
-Asset Tracking in loui v4.0 allows you to manage static assets like images, videos, and fonts with the same precision as your source code. The engine analyzes how assets are referenced and identifies orphans that are no longer used.
+Asset Tracking in entkapp v4.0 allows you to manage static assets like images, videos, and fonts with the same precision as your source code. The engine analyzes how assets are referenced and identifies orphans that are no longer used.
 
 ## Features
 
@@ -24,7 +24,7 @@ By default, the following extensions are tracked:
 
 ## Configuration
 
-Configure asset tracking in `loui/config.json`:
+Configure asset tracking in `entkapp/config.json`:
 
 ```json
 {
@@ -42,7 +42,7 @@ Configure asset tracking in `loui/config.json`:
 Create a custom asset tracker using the Plugin SDK:
 
 ```javascript
-import { PluginSDK } from 'loui/src/api/PluginSDK.js';
+import { PluginSDK } from 'entkapp/src/api/PluginSDK.js';
 
 const MyAssetTracker = PluginSDK.createAssetTrackingPlugin({
   name: 'custom-asset-tracker',

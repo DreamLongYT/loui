@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide covers common issues you might encounter while using loui v4.0 and provides solutions to resolve them.
+This guide covers common issues you might encounter while using entkapp v4.0 and provides solutions to resolve them.
 
 ## General Issues
 
@@ -17,7 +17,7 @@ This guide covers common issues you might encounter while using loui v4.0 and pr
 ### False positives (Code flagged as dead but is used)
 - **Cause**: Dynamic imports, reflection, or framework-specific "magic" usage.
 - **Solution**:
-  - Use `// loui-ignore` comments above the flagged code.
+  - Use `// entkapp-ignore` comments above the flagged code.
   - Add the file or symbol to the `ignore` list in `config.json`.
   - Ensure you have the correct ecosystem plugin enabled (e.g., `nextjs` for Next.js projects).
 
@@ -29,14 +29,14 @@ This guide covers common issues you might encounter while using loui v4.0 and pr
 
 ## CLI Errors
 
-### "Command not found: loui"
-- **Solution**: Ensure you have installed the package locally and are using `npx loui` or have added it to your `PATH`.
+### "Command not found: entkapp"
+- **Solution**: Ensure you have installed the package locally and are using `npx entkapp` or have added it to your `PATH`.
 
 ### "Critical Operational Pipeline Failure"
 - **Cause**: Usually a permission issue, a corrupt cache, or an unhandled edge case in a plugin.
 - **Solution**:
   - Run with `--verbose` to see the full stack trace.
-  - Try clearing the cache: `rm -rf .loui/cache`.
+  - Try clearing the cache: `rm -rf .entkapp/cache`.
   - Ensure the engine has write permissions to your project directory.
 
 ## Plugin Issues
@@ -74,6 +74,6 @@ This guide covers common issues you might encounter while using loui v4.0 and pr
 ## Getting Help
 
 If you can't find the solution here:
-1. Check the [GitHub Issues](https://github.com/DreamLongYT/loui/issues).
+1. Check the [GitHub Issues](https://github.com/DreamLongYT/entkapp/issues).
 2. Run with `--verbose` and share the logs.
 3. Consult the [API Documentation](/api-headless) for programmatic issues.

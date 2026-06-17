@@ -1,8 +1,8 @@
 /**
  * ============================================================================
- * Headless API for loui v4.0.0
+ * Headless API for entkapp v4.1.0
  * ============================================================================
- * Provides a programmatic interface for integrating loui into
+ * Provides a programmatic interface for integrating entkapp into
  * custom workflows, CI/CD pipelines, and third-party tools.
  * 
  * Features:
@@ -13,6 +13,7 @@
  */
 
 import EventEmitter from 'events';
+import path from 'path';
 import { RefactoringEngine } from '../index.js';
 
 export class HeadlessAPI extends EventEmitter {
@@ -36,14 +37,13 @@ export class HeadlessAPI extends EventEmitter {
 
       const engineOptions = {
         cwd: projectRoot,
-        allowAutoFix: config.autoFix !== false,
+        autoFix: config.autoFix !== false,
         skipConfirm: config.skipConfirm || false,
         verbose: config.verbose || false,
         ...config
       };
 
       this.engine = new RefactoringEngine(engineOptions);
-      await this.engine.context.initialize();
 
       this.emit('initialize:complete', {
         projectRoot,
@@ -128,7 +128,7 @@ export class HeadlessAPI extends EventEmitter {
       // Sequential processing
       for (let i = 0; i < sourceCodeFilesList.length; i++) {
         const filePath = sourceCodeFilesList[i];
-        const node = this.engine.context.createNode(filePath);
+        const node = this.engine.context.getOrCreateNode(filePath);
         const currentHash = await this.engine.cacheManager.computeHash(filePath);
         node.contentHash = currentHash;
 
@@ -139,7 +139,7 @@ export class HeadlessAPI extends EventEmitter {
           this.engine.hydrateNodeFromCache(node, cacheManifest[filePath]);
         } else if (!parallelParseCompleted) {
           this.engine.context.metrics.cacheMisses++;
-          await this.engine.analyzer.processFile(filePath, node);
+          await this.engine.analyzer.parseFile(filePath, "", node);
         }
 
         this.engine.magicDetector.injectVirtualConsumerEdges(filePath, node, activeFrameworkEcosystems);
@@ -185,7 +185,7 @@ export class HeadlessAPI extends EventEmitter {
     }
 
     try {
-      const node = this.engine.context.graph.get(filePath);
+      const node = this.engine.context.projectGraph.get(filePath);
       if (!node) {
         throw new Error(`File not found in analysis graph: ${filePath}`);
       }
@@ -205,7 +205,7 @@ export class HeadlessAPI extends EventEmitter {
         const safety = await this.engine.impactAnalyzer.verifyRefactorSafety(
           filePath,
           symbol,
-          this.engine.context.graph
+          this.engine.context.projectGraph
         );
         impact.refactorSafety = safety;
       }
@@ -245,12 +245,12 @@ export class HeadlessAPI extends EventEmitter {
       await this.engine.selfHealer.runSelfHealingLifecycle(async () => {
         // Delete dead files
         const filesToDelete = changes.deleteDeadFiles !== false
-          ? this.analysisResults.structuralIssuesDetected.deadFiles
+          ? this.analysisResults.orphanedFiles
           : [];
 
         for (const relPath of filesToDelete) {
           try {
-            const absPath = require('path').resolve(this.engine.context.cwd, relPath);
+            const absPath = path.resolve(this.engine.context.cwd, relPath);
             await this.engine.txManager.stageDeletion(absPath);
             refactoringResults.filesDeleted.push(relPath);
             this.emit('refactoring:file-deleted', { file: relPath });
@@ -262,19 +262,19 @@ export class HeadlessAPI extends EventEmitter {
 
         // Remove unused exports
         const exportsToRemove = changes.removeUnusedExports !== false
-          ? this.analysisResults.structuralIssuesDetected.deadExports
+          ? this.analysisResults.deadExports
           : [];
 
         for (const unusedExport of exportsToRemove) {
           try {
-            const absPath = require('path').resolve(this.engine.context.cwd, unusedExport.file);
-            const node = this.engine.context.graph.get(absPath);
+            const absPath = path.resolve(this.engine.context.cwd, unusedExport.file);
+            const node = this.engine.context.projectGraph.get(absPath);
 
             if (node) {
               const safety = await this.engine.impactAnalyzer.verifyRefactorSafety(
                 absPath,
                 unusedExport.symbol,
-                this.engine.context.graph
+                this.engine.context.projectGraph
               );
 
               if (safety.isSafeToPrune) {
@@ -304,12 +304,12 @@ export class HeadlessAPI extends EventEmitter {
 
         // Remove unused dependencies
         const depsToRemove = changes.removeUnusedDependencies !== false
-          ? this.analysisResults.structuralIssuesDetected.unusedDependencies
+          ? this.analysisResults.unusedDependencies
           : [];
 
         for (const dep of depsToRemove) {
           try {
-            const absPath = require('path').resolve(this.engine.context.cwd, dep.manifest);
+            const absPath = path.resolve(this.engine.context.cwd, dep.manifest);
             // TODO: Implement package.json dependency removal
             refactoringResults.dependenciesRemoved.push(dep);
             this.emit('refactoring:dependency-removed', dep);

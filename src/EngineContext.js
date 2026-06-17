@@ -109,6 +109,7 @@ export class EngineContext {
     this.monorepoPackageRoots = new Set();
     this.verbose = false;
     this.metrics = { totalFilesScanned: 0, cacheHits: 0, cacheMisses: 0 };
+    this.allSecretFindings = [];
   }
 
   getOrCreateNode(filePath) {
@@ -159,7 +160,7 @@ export class EngineContext {
       
       for (const dep of allDeps) {
         // Skip @types packages and known safe packages
-        if (dep.startsWith('@types/') || dep === 'loui') {
+        if (dep.startsWith('@types/') || dep === 'entkapp') {
           continue;
         }
         

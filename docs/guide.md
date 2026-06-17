@@ -1,16 +1,16 @@
-# Getting Started with loui v3.3.15
+# Getting Started with entkapp v4.1.0
 
 ## Overview
 
-loui v3.3.15 is a major update focused on solving the most critical issues currently facing the JavaScript/TypeScript ecosystem—many of which remain open in competing tools like Knip.
+entkapp v4.1.0 is a major update focused on solving the most critical issues currently facing the JavaScript/TypeScript ecosystem—many of which remain open in competing tools like Knip.
 
-## Why v3.3.15?
+## Why v4.1.0?
 
 This version isn't just a number; it's a statement. We've analyzed the most requested features and reported bugs from across the community and implemented robust solutions.
 
 ### 🚀 Key Improvements over Knip
 
-| Feature | loui v3.3.15 | Knip v6 Status |
+| Feature | entkapp v4.1.0 | Knip v6 Status |
 | :--- | :--- | :--- |
 | **Circular Dependency Tracking** | ✅ Native Support | 💡 Open Feature Request (#1734) |
 | **tsConfig Path Resolution** | ✅ Robust & v6-Ready | 🔄 Open Issue (#1794) |
@@ -28,31 +28,31 @@ Detect circular dependencies in your codebase before they cause runtime issues o
 Our new `PathMapper` handles complex `baseUrl` and `paths` configurations with precision, ensuring that aliased imports are always resolved correctly, even in multi-package monorepos.
 
 ### 📦 Monorepo Hoisting Awareness
-We've solved the "Sibling Workspace" problem. loui correctly identifies when dependencies are hoisted to the root, preventing false positives in individual packages.
+We've solved the "Sibling Workspace" problem. entkapp correctly identifies when dependencies are hoisted to the root, preventing false positives in individual packages.
 
 ## Quick Start
 
 ### Installation
 ```bash
-npm install loui
+npm install entkapp
 ```
 
 ### Basic Usage
 ```bash
-npx loui -r --fix
+npx entkapp -r --fix
 ```
 
 ### Check for Circular Dependencies
 ```bash
-npx loui -r --circular
+npx entkapp -r --circular
 ```
 
 ### Scan for Hardcoded Secrets
 ```bash
-npx loui -r
+npx entkapp -r
 ```
 
-> **Note**: Always use the `-r` or `--run` flag to execute the analysis loop. v3.3.15 focuses on security and precision.
+> **Note**: Always use the `-r` or `--run` flag to execute the analysis loop. v4.1.0 focuses on security and precision.
 
 ## Community-Driven Development
 

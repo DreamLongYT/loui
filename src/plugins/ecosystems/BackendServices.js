@@ -1,11 +1,13 @@
 /**
  * ============================================================================
- * Backend Services Plugins for loui v4.0.0
+ * Backend Services Plugins for entkapp v4.1.0
  * ============================================================================
  * Built-in support for GraphQL, REST APIs, and Databases.
  */
 
 import { BasePlugin } from '../BasePlugin.js';
+import fs from 'fs/promises';
+import path from 'path';
 
 /**
  * GraphQL Ecosystem Plugin
@@ -21,7 +23,7 @@ export class GraphQLPlugin extends BasePlugin {
 
   async isActive(baseDir) {
     try {
-      const pkgJson = JSON.parse(await require('fs').promises.readFile(require('path').join(baseDir, 'package.json'), 'utf8'));
+      const pkgJson = JSON.parse(await fs.readFile(path.join(baseDir, 'package.json'), 'utf8'));
       return !!(pkgJson.dependencies?.graphql || pkgJson.devDependencies?.graphql || pkgJson.dependencies?.['@apollo/client']);
     } catch {
       return false;

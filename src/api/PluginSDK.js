@@ -1,9 +1,9 @@
 /**
  * ============================================================================
- * Plugin SDK for loui v4.0.0
+ * Plugin SDK for entkapp v4.0.0
  * ============================================================================
  * Provides utilities and helpers for developing custom plugins that extend
- * loui's analysis and healing capabilities.
+ * entkapp's analysis and healing capabilities.
  */
 
 import { BasePlugin } from '../plugins/BasePlugin.js';

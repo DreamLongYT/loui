@@ -2,7 +2,7 @@
 
 ## Overview
 
-loui v4.0 provides advanced analysis for CSS-in-JS libraries, allowing you to track styled components, emotion styles, and other CSS-in-JS patterns. This helps identify unused styles and ensures consistent styling across your codebase.
+entkapp v4.0 provides advanced analysis for CSS-in-JS libraries, allowing you to track styled components, emotion styles, and other CSS-in-JS patterns. This helps identify unused styles and ensures consistent styling across your codebase.
 
 ## Supported Libraries
 
@@ -29,7 +29,7 @@ Helps identify which styles are critical for initial rendering by analyzing the 
 
 ## Configuration
 
-Enable CSS-in-JS analysis in your `loui/config.json`:
+Enable CSS-in-JS analysis in your `entkapp/config.json`:
 
 ```json
 {
@@ -48,7 +48,7 @@ Enable CSS-in-JS analysis in your `loui/config.json`:
 Using the Plugin SDK to create a custom CSS-in-JS analyzer:
 
 ```javascript
-import { PluginSDK } from 'loui/src/api/PluginSDK.js';
+import { PluginSDK } from 'entkapp/src/api/PluginSDK.js';
 
 const MyCSSPlugin = PluginSDK.createCSSInJSPlugin({
   name: 'custom-styled-analyzer',
@@ -103,6 +103,6 @@ Ensure the library you are using is included in the `libraries` configuration ar
 If a style is used via dynamic property access (e.g., `styled[dynamicName]`), the static analyzer might miss it. In such cases, use an ignore comment:
 
 ```javascript
-// loui-ignore
+// entkapp-ignore
 const DynamicStyle = styled.div` ... `;
 ```

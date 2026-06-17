@@ -27,7 +27,7 @@
   // Dependencies to ignore during unused dependency analysis
   // This prevents false positives for tools that analyze themselves
   "ignoreDependencies": [
-    "loui",
+    "entkapp",
     "@types/*"
   ],
 

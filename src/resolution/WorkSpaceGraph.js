@@ -1,4 +1,5 @@
 import fs from 'fs/promises';
+import fsSync from 'fs';
 import path from 'path';
 
 /**
@@ -180,38 +181,6 @@ export class WorkspaceGraph {
 
   /**
    * Attempts to register a directory as a workspace package.
-   * Returns true if a valid package.json with a `name` field was found.
-   */
-  async _tryRegisterPackage(packageDir) {
-    const manifestFile = path.join(packageDir, 'package.json');
-    try {
-      const data = await fs.readFile(manifestFile, 'utf8');
-      const pkg = JSON.parse(data);
-      
-      if (pkg.name) {
-        const entryPoints = this.calculatePackageExportsEntries(pkg, packageDir);
-        
-        this.packageManifests.set(pkg.name, {
-          packageName: pkg.name,
-          rootDirectory: packageDir,
-          manifestPath: manifestFile,
-          entryPoints
-        });
-
-        this.workspacePackageNames.add(pkg.name);
-        // Also register the package root so the resolver can identify files
-        // inside this package as "internal" rather than node_modules.
-        this.context.monorepoPackageRoots.add(packageDir);
-        return true;
-      }
-    } catch {
-      // package.json parsing failed; ignore invalid directory roots
-    }
-    return false;
-  }
-
-  /**
-   * Attempts to register a directory as a workspace package.
    * Dynamically evaluates companion tsconfig.json configurations for local build boundaries.
    * Returns true if a valid package.json with a `name` field was found.
    */
@@ -268,7 +237,6 @@ export class WorkspaceGraph {
    */
   calculatePackageExportsEntries(pkg, pkgDir, localTsconfig) {
     const entries = new Set();
-    const fsNative = require('fs');
 
     // 1. Trace traditional entry fields from manifest
     if (pkg.main && typeof pkg.main === 'string') entries.add(path.resolve(pkgDir, pkg.main));
@@ -314,7 +282,7 @@ export class WorkspaceGraph {
     for (const absolutePath of collectedPaths) {
       const normalizedPath = path.normalize(absolutePath);
 
-      if (fsNative.existsSync(normalizedPath) && fsNative.statSync(normalizedPath).isFile()) {
+      if (fsSync.existsSync(normalizedPath) && fsSync.statSync(normalizedPath).isFile()) {
         verifiedManifestEntries.push(normalizedPath);
       } else {
         // Precise Remapping Layer: Swap out local outDir tokens with local rootDir tokens
@@ -325,14 +293,14 @@ export class WorkspaceGraph {
           pathSegments[outDirIndex] = rootDirToken;
           let tsconfigCandidate = pathSegments.join(path.sep).replace(/\.js$/, '.ts');
 
-          if (fsNative.existsSync(tsconfigCandidate) && fsNative.statSync(tsconfigCandidate).isFile()) {
+          if (fsSync.existsSync(tsconfigCandidate) && fsSync.statSync(tsconfigCandidate).isFile()) {
             verifiedManifestEntries.push(tsconfigCandidate);
             continue;
           }
 
           // Check for companion TSX formats
           const tsxCandidate = tsconfigCandidate.replace(/\.ts$/, '.tsx');
-          if (fsNative.existsSync(tsxCandidate) && fsNative.statSync(tsxCandidate).isFile()) {
+          if (fsSync.existsSync(tsxCandidate) && fsSync.statSync(tsxCandidate).isFile()) {
             verifiedManifestEntries.push(tsxCandidate);
             continue;
           }
@@ -349,7 +317,7 @@ export class WorkspaceGraph {
 
         for (const fallbackPath of remappedFallbacks) {
           const cleanFallback = path.normalize(fallbackPath);
-          if (fsNative.existsSync(cleanFallback) && fsNative.statSync(cleanFallback).isFile()) {
+          if (fsSync.existsSync(cleanFallback) && fsSync.statSync(cleanFallback).isFile()) {
             verifiedManifestEntries.push(cleanFallback);
             break; 
           }
@@ -372,7 +340,7 @@ export class WorkspaceGraph {
       ];
 
       for (const fallback of standardFallbacks) {
-        if (fsNative.existsSync(fallback) && fsNative.statSync(fallback).isFile()) {
+        if (fsSync.existsSync(fallback) && fsSync.statSync(fallback).isFile()) {
           entries.add(fallback);
           break; // Stop on first matched valid fallback file
         }
@@ -468,8 +436,7 @@ export class WorkspaceGraph {
       // Read the local workspace package.json dependencies
       let localManifest = {};
       try {
-        const fsNative = require('fs');
-        localManifest = JSON.parse(fsNative.readFileSync(owningWorkspace.manifestPath, 'utf8'));
+        localManifest = JSON.parse(fsSync.readFileSync(owningWorkspace.manifestPath, 'utf8'));
       } catch {}
 
       const localDeps = new Set([

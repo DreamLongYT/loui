@@ -51,7 +51,7 @@ export class WorkerPool {
       // Merge thread structural subsets back into the primary context graph nodes
       analyticalResultsSubsets.flat().forEach(result => {
         if (!result) return;
-        const node = masterEngineInstanceReference.context.createNode(result.filePath);
+        const node = masterEngineInstanceReference.context.getOrCreateNode(result.filePath);
         
         result.explicitImports.forEach(i => node.explicitImports.add(i));
         result.dynamicImports.forEach(i => node.dynamicImports.add(i));

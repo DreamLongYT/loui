@@ -3,7 +3,7 @@ import { OxcAnalyzer } from "./ast/OxcAnalyzer.js";
 import { SecretScanner } from './ast/SecretScanner.js';
 /**
  * ============================================================================
- * 📦 loui v3.3.16: Unified Architectural Refactoring Orchestrator
+ * 📦 entkapp v4.1.0: Unified Architectural Refactoring Orchestrator
  * ============================================================================
  * Main execution bridge managing multi-pass compilation cycles, semantic cross-linking,
  * supply-chain validation audits, and automated structural healing rollbacks.
@@ -41,15 +41,17 @@ export class RefactoringEngine {
   constructor(options = {}) {
     // Stage 1: Instantiate State Registers and Global Variables context
     this.context = new EngineContext(options.cwd || process.cwd());
-    this.context.options = {
-      fix: options.autoFix,
-      tsconfig: options.tsconfig,
-      testCommand: options.testCommand,
-      workspace: options.workspace,
-      verbose: options.verbose,
-      skipConfirm: options.skipConfirm,
-      debug: options.debug 
-    };
+    this.context.options = options;
+    this.context.autoFix = options.autoFix;
+    this.context.tsconfigFilename = options.tsconfig;
+    this.context.testCommand = options.testCommand;
+    this.context.workspace = options.workspace;
+    this.context.verbose = options.verbose;
+    this.context.skipConfirm = options.skipConfirm;
+    this.context.debug = options.debug;
+    this.context.entryPoints = options.entryPoints || [];
+    this.context.exclude = options.exclude || [];
+    this.context.rules = options.rules || {};
     // Stage 2: Initialize File Mappers and Multi-Package Graph Networks
     this.pathMapper = new PathMapper(this.context);
     this.workspaceGraph = new WorkspaceGraph(this.context);
@@ -83,7 +85,7 @@ export class RefactoringEngine {
    */
   async run() {
     try {
-      console.log(ansis.bold.green('🎯 Starting loui Operational Optimization Cycle...'));
+      console.log(ansis.bold.green('🎯 Starting entkapp Operational Optimization Cycle...'));
       
       let rl;
       if (!this.context.skipConfirm) {
@@ -354,7 +356,7 @@ export class RefactoringEngine {
               
               if (!cleanRelative.startsWith('..') && !cleanRelative.startsWith('/') && fileNode.explicitImports) {
                 try {
-                  // 💎 FIXED: Completely removed 'require' call and switched to native sync token
+                  // Switched to native sync token
                   const localManifest = JSON.parse(readFileSync(metadata.manifestPath, 'utf8'));
                   const localDeps = new Set([
                     ...Object.keys(localManifest.dependencies || {}),
@@ -366,7 +368,7 @@ export class RefactoringEngine {
                     if (specifier.startsWith('.') || specifier.startsWith('/')) return;
                     const basePkg = specifier.startsWith('@') ? specifier.split('/').slice(0, 2).join('/') : specifier.split('/')[0];
                     
-                    // 💎 FIXED: Ensure lookups scan local package configurations only
+                    // Ensure lookups scan local package configurations only
                     if (!localDeps.has(basePkg)) {
                       const alreadyFlagged = this.context.unlistedDependencies.some(u => u.package === basePkg && u.file === filePath);
                       if (!alreadyFlagged) {
@@ -431,7 +433,6 @@ export class RefactoringEngine {
 
       // 🚨 TARGET BUG 1: Detect Shadowed / Unused Root Dependencies
       try {
-        const fsNative = require('fs');
         const rootPkgPath = path.join(this.context.cwd, 'package.json');
         const rootPkg = JSON.parse(readFileSync(rootPkgPath, 'utf8'));
         const rootDeps = Object.keys(rootPkg.dependencies || {});
@@ -516,8 +517,8 @@ export class RefactoringEngine {
           console.log(ansis.bold(`  📦 Remove ${analysisSummary.unusedDependencies.length} unused dependencies:`));
           analysisSummary.unusedDependencies.forEach(d => {
             console.log(ansis.dim(`    • ${d.package} (${d.type} in ${d.manifest})`));
-          }); // 💎 FIXED: Added the missing closing block brace and parenthesis
-        } // 💎 FIXED: Added the missing closing brace for the parent if-statement
+          });
+        }
 
         // 🚨 TARGET BUG 2: Print Alert layout warning for your unlisted package detections!
         if (analysisSummary.unlistedDependencies && analysisSummary.unlistedDependencies.length > 0) {
@@ -584,7 +585,7 @@ export class RefactoringEngine {
     for (const entry of entries) {
       const res = path.resolve(dir, entry.name);
       if (entry.isDirectory()) {
-        if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === '.loui-cache') continue;
+        if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === '.entkapp-cache') continue;
         if (this.context.verbose) console.log(ansis.dim(`📂 Scanning deep folder: ${res}`));
         await this.discoverSourceFiles(res, fileList);
       } else {

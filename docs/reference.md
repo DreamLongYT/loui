@@ -1,9 +1,9 @@
 # CLI Reference v3.3.8+
 
-This page lists all available command-line options and configuration keys for `loui v3.3.8+`.
+This page lists all available command-line options and configuration keys for `entkapp v3.3.8+`.
 
 ```text
-Usage: loui [options]
+Usage: entkapp [options]
 
 Ultimate Enterprise Codebase Janitor & Self-Healing Engine
 
@@ -18,7 +18,7 @@ Options:
   --workspace            Enable monorepo cluster mesh evaluation
   --verbose              Toggle expanded trace telemetry for diagnostics
   -y, --yes              Skip confirmation prompts for automatic execution
-  --init                 Initialize a new loui configuration in the current directory
+  --init                 Initialize a new entkapp configuration in the current directory
   --timeout <ms>         Set execution timeout in milliseconds (default: 30000)
   -h, --help             display help for command
 ```
@@ -26,10 +26,10 @@ Options:
 ## Options in Detail
 
 ### `-V`, `--version`
-Displays the current version of `loui`.
+Displays the current version of `entkapp`.
 
 ### `-c`, `--cwd <path>`
-Defines the root directory where `loui` should be executed.
+Defines the root directory where `entkapp` should be executed.
 
 ### `-r`, `--run`
 Initiates the analysis and refactoring process. This is required for execution.
@@ -38,7 +38,7 @@ Initiates the analysis and refactoring process. This is required for execution.
 Controls whether the engine should apply changes to the filesystem.
 
 ### `--init`
-Automatically sets up the `/loui` directory and a default `config.json` in your project root.
+Automatically sets up the `/entkapp` directory and a default `config.json` in your project root.
 
 ### `--workspace`
 Enables deep analysis of monorepos, linking dependencies across multiple packages. **v3.3.8+ automatically detects monorepo layouts.**
@@ -59,7 +59,7 @@ The engine now automatically scans for hardcoded secrets and credentials during 
 | `get(key)` | **New in v3.2.0.** Dynamic getter for custom properties | `any` |
 | `isActive(dir)` | Async check for project compatibility | `Promise<boolean>` |
 
-### Configuration (`loui/config.json`)
+### Configuration (`entkapp/config.json`)
 
 ```json
 {

@@ -9,7 +9,7 @@ import crypto from 'crypto';
 export class IncrementalCacheManager {
   constructor(context) {
     this.context = context;
-    this.manifestPath = path.join(context.cacheDir || path.join(context.cwd, '.loui-cache'), 'graph-manifest.json');
+    this.manifestPath = path.join(context.cacheDir || path.join(context.cwd, '.entkapp-cache'), 'graph-manifest.json');
   }
 
   /**
@@ -71,6 +71,8 @@ export class IncrementalCacheManager {
     }
 
     try {
+      const cacheDir = path.dirname(this.manifestPath);
+      await fs.mkdir(cacheDir, { recursive: true });
       await fs.writeFile(
         this.manifestPath, 
         JSON.stringify(serializationOutput, null, 2), 

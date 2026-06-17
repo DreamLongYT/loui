@@ -2,18 +2,18 @@
 
 ## Overview
 
-The Headless API provides a programmatic interface to integrate loui into custom workflows, CI/CD pipelines, and third-party tools. It offers full control over analysis and refactoring operations with an event-driven architecture for real-time feedback.
+The Headless API provides a programmatic interface to integrate entkapp into custom workflows, CI/CD pipelines, and third-party tools. It offers full control over analysis and refactoring operations with an event-driven architecture for real-time feedback.
 
 ## Installation
 
 ```bash
-npm install loui
+npm install entkapp
 ```
 
 ## Quick Start
 
 ```javascript
-import { HeadlessAPI } from 'loui/src/api/HeadlessAPI.js';
+import { HeadlessAPI } from 'entkapp/src/api/HeadlessAPI.js';
 
 const api = new HeadlessAPI();
 
@@ -230,7 +230,7 @@ api.on('analysis:complete', (results) => console.log('Analysis complete', result
 ## Complete Example
 
 ```javascript
-import { HeadlessAPI } from 'loui/src/api/HeadlessAPI.js';
+import { HeadlessAPI } from 'entkapp/src/api/HeadlessAPI.js';
 
 async function optimizeProject() {
   const api = new HeadlessAPI();
@@ -357,7 +357,7 @@ await api.analyze();
 If you're migrating from the CLI to the Headless API:
 
 ```javascript
-// CLI equivalent: npx loui --fix --yes
+// CLI equivalent: npx entkapp --fix --yes
 const api = new HeadlessAPI();
 await api.initialize(process.cwd(), {
   autoFix: true,

@@ -2,7 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 
 /**
- * Base class for all loui plugins.
+ * Base class for all entkapp plugins.
  * Defines the contract for ecosystem detection and entry point mapping.
  * Version 3.2.0: Added support for dynamic custom getters.
  */

@@ -1,4 +1,6 @@
 import ts from 'typescript';
+import path from 'path';
+import fs from 'fs';
 
 export class ASTAnalyzer {
   constructor(context) {
@@ -166,14 +168,12 @@ export class ASTAnalyzer {
           }
           // Fallback to relative file layout calculations
           if (spec.startsWith('.')) {
-            const pathNative = require('path');
-            let resolved = pathNative.resolve(pathNative.dirname(sourceFile.fileName), spec);
+            let resolved = path.resolve(path.dirname(sourceFile.fileName), spec);
             // Append standard extensions if missing from import string
-            if (!pathNative.extname(resolved)) {
-              const fsNative = require('fs');
-              if (fsNative.existsSync(resolved + '.ts')) resolved += '.ts';
-              else if (fsNative.existsSync(resolved + '.tsx')) resolved += '.tsx';
-              else if (fsNative.existsSync(resolved + '.js')) resolved += '.js';
+            if (!path.extname(resolved)) {
+              if (fs.existsSync(resolved + '.ts')) resolved += '.ts';
+              else if (fs.existsSync(resolved + '.tsx')) resolved += '.tsx';
+              else if (fs.existsSync(resolved + '.js')) resolved += '.js';
             }
             return resolved;
           }

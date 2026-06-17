@@ -3,7 +3,7 @@ import path from 'path';
 import { pathToFileURL } from 'url';
 
 /**
- * Loads and parses loui configuration files.
+ * Loads and parses entkapp configuration files.
  * Supports scaffold.config.js, .scaffoldrc.json, and .scaffoldrc.
  */
 export class ConfigLoader {
@@ -13,13 +13,13 @@ export class ConfigLoader {
 
   async loadConfig(projectRoot) {
     const searchPaths = [
-      'loui.json',
-      'loui.jsonc',
-      '.loui.json',
-      '.loui.jsonc',
-      'loui.js',
-      'loui.ts',
-      'loui/config.json',
+      'entkapp.json',
+      'entkapp.jsonc',
+      '.entkapp.json',
+      '.entkapp.jsonc',
+      'entkapp.js',
+      'entkapp.ts',
+      'entkapp/config.json',
       'scaffold.config.js',
       'scaffold.config.mjs',
       '.scaffoldrc.json',
@@ -33,8 +33,8 @@ export class ConfigLoader {
       const pkgPath = path.join(projectRoot, 'package.json');
       const pkgContent = await fs.readFile(pkgPath, 'utf8');
       const pkg = JSON.parse(pkgContent);
-      if (pkg['loui']) {
-        Object.assign(config, pkg['loui']);
+      if (pkg['entkapp']) {
+        Object.assign(config, pkg['entkapp']);
       }
     } catch (e) {
       // ignore

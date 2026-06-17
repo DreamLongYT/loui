@@ -1,6 +1,6 @@
-# loui Plugins
+# entkapp Plugins
 
-This directory is for your custom plugins. loui will automatically load any `.js` or `.mjs` files placed here if `useCustomPlugins` is set to `true` in your `config.json`.
+This directory is for your custom plugins. entkapp will automatically load any `.js` or `.mjs` files placed here if `useCustomPlugins` is set to `true` in your `config.json`.
 
 ## Supported Ecosystems (Built-in)
 
@@ -12,7 +12,7 @@ This directory is for your custom plugins. loui will automatically load any `.js
 
 ## Knip Compatibility
 
-loui supports Knip-style plugins. You can drop Knip plugins into this folder, and the engine will attempt to wrap them for use within the loui ecosystem.
+entkapp supports Knip-style plugins. You can drop Knip plugins into this folder, and the engine will attempt to wrap them for use within the entkapp ecosystem.
 
 ## Documentation
 

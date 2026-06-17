@@ -3,7 +3,7 @@ import fs from 'fs/promises';
 import { BasePlugin } from '../BasePlugin.js';
 
 /**
- * TypeScript Plugin for loui.
+ * TypeScript Plugin for entkapp.
  * Handles tsconfig.json detection and TypeScript-specific entry points.
  */
 export class TypeScriptPlugin extends BasePlugin {

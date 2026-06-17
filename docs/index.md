@@ -2,19 +2,19 @@
 layout: home
 
 hero:
-  name: loui v3.3.15
+  name: entkapp v4.1.0
   text: The Ultimate Enterprise Codebase Janitor
   tagline: Solving what Knip cannot. Circular-Aware & Self-Healing.
   image:
     src: /logo.png
-    alt: loui
+    alt: entkapp
   actions:
     - theme: brand
       text: Get Started
       link: /guide
     - theme: alt
       text: View on GitHub
-      link: https://github.com/DreamLongYT/loui
+      link: https://github.com/DreamLongYT/entkapp
 
 features:
   - title: Comprehensive Analysis
@@ -31,11 +31,11 @@ features:
     details: Detect hardcoded secrets, API keys, and sensitive data automatically during analysis.
 ---
 
-## Why loui?
+## Why entkapp?
 
 In large-scale enterprise projects, codebases naturally accumulate "cruft" – unused files, orphaned exports, and redundant dependencies. This "dead code" increases bundle sizes, slows down build times, and makes the codebase harder to maintain.
 
-**loui** is not just another analysis tool. It's a proactive **Janitor** for your code. It doesn't just tell you what's wrong; it provides the tools to fix it automatically and safely.
+**entkapp** is not just another analysis tool. It's a proactive **Janitor** for your code. It doesn't just tell you what's wrong; it provides the tools to fix it automatically and safely.
 
 ### Key Benefits
 
@@ -48,7 +48,7 @@ In large-scale enterprise projects, codebases naturally accumulate "cruft" – u
 
 ## Quick Comparison
 
-| Feature | loui | Knip.dev |
+| Feature | entkapp | Knip.dev |
 | :--- | :---: | :---: |
 | Dead Code Detection | ✅ | ✅ |
 | Auto-Fix / Refactoring | ✅ | ⚠️ |
@@ -59,9 +59,9 @@ In large-scale enterprise projects, codebases naturally accumulate "cruft" – u
 
 ## Quick Test
 
-### loui v3.3.7
+### entkapp v3.3.7
 
-> **📦 loui v3.3.7 Engine Activation**
+> **📦 entkapp v3.3.7 Engine Activation**
 
 ```
 Target Workspace Root : E:\Download\final-test-package
@@ -69,7 +69,7 @@ Refactoring Mode     : Dry-Run Reporting Only
 Validation Sandbox   : npm test
 ```
 
-> **🎯 Starting loui Operational Optimization Cycle...**
+> **🎯 Starting entkapp Operational Optimization Cycle...**
 
 ```
 🔗 Linking graph edges and checking structural usage paths...
@@ -158,7 +158,7 @@ unused-lib  package.json:14:6
 > **Unlisted binaries (1)**
 
 ```
-loui  package.json
+entkapp  package.json
 ```
 
 > **Configuration hints (1)**
@@ -169,6 +169,6 @@ src/index.ts    package.json  Package entry file not found
 
 ## Community & Support
 
-- **GitHub**: [DreamLongYT/loui](https://github.com/DreamLongYT/loui)
-- **NPM**: [loui](https://www.npmjs.com/package/loui)
+- **GitHub**: [DreamLongYT/entkapp](https://github.com/DreamLongYT/entkapp)
+- **NPM**: [entkapp](https://www.npmjs.com/package/entkapp)
 - **License**: Apache-2.0 (The original code was from the lovely DreamLong)
