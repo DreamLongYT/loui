@@ -10,7 +10,7 @@ export class DeadCodeDetector {
     // Find all entry points
     const entryPoints = new Set();
     for (const [filePath, node] of graph.entries()) {
-      if (node.isEntry || node.isNextJsRoute || node.isSvelteComponent || node.isAstroPage) {
+      if (node.isEntry || node.isLibraryEntry || node.isNextJsRoute || node.isSvelteComponent || node.isAstroPage) {
         entryPoints.add(filePath);
       }
     }
@@ -45,7 +45,7 @@ export class DeadCodeDetector {
       if (!node) continue;
       
       // If it's an entry point, we consider its exports used (unless strictly configured otherwise)
-      if (node.isEntry) continue;
+      if (node.isEntry || node.isLibraryEntry) continue;
 
       for (const [exportName, exportInfo] of node.internalExports.entries()) {
         if (exportName === '*' || exportName === 'default') continue; // Skip wildcards for now

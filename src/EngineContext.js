@@ -31,8 +31,16 @@ export class GraphNode {
     this.localSuppressedRules = new Set();
   }
 
-  isSymbolReferencedExternally(symbolName, projectGraph) {
+  isSymbolReferencedExternally(symbolName, projectGraph, context) {
     if (this.isLibraryEntry) return true;
+    
+    // Check global registry if provided
+    if (context && context.importUsageRegistry) {
+        if (context.importUsageRegistry.has(`${this.filePath}:${symbolName}`) || 
+            context.importUsageRegistry.has(`${this.filePath}:*`)) {
+            return true;
+        }
+    }
 
     // --- NEW: Self-reference check (Fix for SecretSeverity bug) ---
     // If the symbol is used within the same file, it is NOT dead.
@@ -137,12 +145,14 @@ export class EngineContext {
         report.orphanedFiles.push(path.relative(this.cwd, filePath));
       }
 
+      if (node.isEntry || node.isLibraryEntry) continue;
+
       for (const [symbol, meta] of node.internalExports.entries()) {
         if (symbol === '*' || symbol === 'default' || node.localSuppressedRules.has('unused-export') || node.localSuppressedRules.has(`unused-export:${symbol}`)) {
           continue;
         }
 
-        if (!node.isSymbolReferencedExternally(symbol, this.projectGraph)) {
+        if (!node.isSymbolReferencedExternally(symbol, this.projectGraph, this)) {
           const loc = node.symbolSourceLocations.get(symbol) || { line: 0, column: 0 };
           report.deadExports.push({
             symbol,

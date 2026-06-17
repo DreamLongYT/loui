@@ -271,6 +271,9 @@ export class OxcAnalyzer {
     // Dynamic import(): import('./module')
     if (node.callee.type === "Import" && node.arguments.length > 0) {
       const arg = node.arguments[0];
+      if (!fileNode.calculatedDynamicImports) fileNode.calculatedDynamicImports = [];
+      fileNode.calculatedDynamicImports.push({ kind: arg.type, start: arg.start });
+
       if (arg.type === "StringLiteral") {
         const specifier = arg.value;
         fileNode.explicitImports.add(specifier);
@@ -278,10 +281,6 @@ export class OxcAnalyzer {
         fileNode.importedSymbols.add(`${specifier}:*`); // Dynamic import usually consumes the whole namespace
         if (!specifier.startsWith('.') && !specifier.startsWith('/')) {
           fileNode.externalPackageUsage.add(this._extractPackageName(specifier));
-        }
-      } else {
-        if (fileNode.calculatedDynamicImports) {
-          fileNode.calculatedDynamicImports.push({ kind: arg.type, start: arg.start });
         }
       }
     } else if (node.callee.type === "Identifier" && node.callee.name === "require" && node.arguments.length > 0 && node.arguments[0].type === "StringLiteral") {

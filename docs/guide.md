@@ -1,16 +1,16 @@
-# Getting Started with entkapp v4.2.0
+# Getting Started with entkapp v4.3.0
 
 ## Overview
 
-entkapp v4.2.0 is a major update focused on solving the most critical issues currently facing the JavaScript/TypeScript ecosystem—many of which remain open in competing tools like Knip.
+entkapp v4.3.0 is a major update focused on solving the most critical issues currently facing the JavaScript/TypeScript ecosystem—many of which remain open in competing tools like Knip.
 
-## Why v4.2.0?
+## Why v4.3.0?
 
 This version isn't just a number; it's a statement. We've analyzed the most requested features and reported bugs from across the community and implemented robust solutions.
 
 ### 🚀 Key Improvements over Knip
 
-| Feature | entkapp v4.2.0 | Knip v6 Status |
+| Feature | entkapp v4.3.0 | Knip v6 Status |
 | :--- | :--- | :--- |
 | **Circular Dependency Tracking** | ✅ Native Support | 💡 Open Feature Request (#1734) |
 | **tsConfig Path Resolution** | ✅ Robust & v6-Ready | 🔄 Open Issue (#1794) |
@@ -52,7 +52,7 @@ npx entkapp -r --circular
 npx entkapp -r
 ```
 
-> **Note**: Always use the `-r` or `--run` flag to execute the analysis loop. v4.2.0 focuses on security and precision.
+> **Note**: Always use the `-r` or `--run` flag to execute the analysis loop. v4.3.0 focuses on security and precision.
 
 ## Community-Driven Development
 

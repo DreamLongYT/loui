@@ -28,7 +28,7 @@ async function bootstrap() {
     program
       .name('entkapp')
       .description(ansis.cyan('Enterprise-Grade AST Syntax Refactoring & Self-Healing Engine'))
-      .version(packageJsonContent.version || '4.2.0');
+      .version(packageJsonContent.version || '4.3.0');
 
     program
       .option('-c, --cwd <path>', 'Specify the execution context root directory', process.cwd())
@@ -132,7 +132,7 @@ async function bootstrap() {
     }, timeoutMs);
     timeoutTimer.unref(); // Allow process to exit if work finishes
 
-    console.log(ansis.bold.green(`\n📦 entkapp v${packageJsonContent.version || '4.2.0'} Engine Activation`));
+    console.log(ansis.bold.green(`\n📦 entkapp v${packageJsonContent.version || '4.3.0'} Engine Activation`));
     console.log(ansis.dim('------------------------------------------------------------'));
     console.log(`${ansis.bold('Target Workspace Root :')} ${ansis.blue(targetCwd)}`);
     console.log(`${ansis.bold('Refactoring Mode     :')} ${options.fix ? ansis.yellow('Active Fixing & Self-Healing Enabled') : ansis.gray('Dry-Run Reporting Only')}`);

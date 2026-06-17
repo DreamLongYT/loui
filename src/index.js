@@ -87,6 +87,8 @@ export class RefactoringEngine {
     try {
       console.log(ansis.bold.green('🎯 Starting entkapp Operational Optimization Cycle...'));
       
+      if (!this.context.importUsageRegistry) this.context.importUsageRegistry = new Set();
+
       let rl;
       if (!this.context.skipConfirm) {
         rl = readline.createInterface({
@@ -136,6 +138,7 @@ export class RefactoringEngine {
 
       for (const filePath of sourceCodeFilesList) {
         const node = this.context.getOrCreateNode(filePath);
+        if (!this.context.importUsageRegistry) this.context.importUsageRegistry = new Set();
         const currentHash = await this.cacheManager.computeHash(filePath);
         node.contentHash = currentHash;
 
@@ -217,6 +220,21 @@ export class RefactoringEngine {
       // Pass 4: Evaluate graph edges and link connections across the codebase mesh
       console.log(ansis.dim('🔗 Linking graph edges and checking structural usage paths...'));
       await this.linkDependencyGraph();
+      
+      // Update entry points and seeds based on link analysis
+      for (const [filePath, node] of this.context.projectGraph.entries()) {
+          if (node.isEntry || node.isLibraryEntry) {
+              if (!this.context.importUsageRegistry) this.context.importUsageRegistry = new Set();
+              this.context.importUsageRegistry.add(`${filePath}:*`);
+              
+              // Also protect all symbols in library entries
+              if (node.internalExports) {
+                  for (const symbol of node.internalExports.keys()) {
+                      this.context.importUsageRegistry.add(`${filePath}:${symbol}`);
+                  }
+              }
+          }
+      }
 
       // NEW: Circular Dependency Detection
       console.log(ansis.dim('🔄 Detecting circular dependencies...'));
@@ -470,6 +488,8 @@ export class RefactoringEngine {
           if (isPackageEntryPoint) continue;
 
           const originalNode = this.context.projectGraph.get(cleanExportedFile);
+          if (originalNode && originalNode.isLibraryEntry) continue;
+          
           const unusedExportsInThisFile = [];
           
           for (const symbol of exportsSet) {
@@ -600,6 +620,14 @@ export class RefactoringEngine {
         const ext = path.extname(entry.name);
         if (['.js', '.jsx', '.ts', '.tsx', '.vue', '.svelte'].includes(ext) || entry.name === 'package.json') {
           fileList.push(res);
+          // Auto-detect entry points: files named index.js/ts/jsx/tsx in the root are entry points
+          if (dir === this.context.cwd && /^index\.(js|ts|jsx|tsx)$/.test(entry.name)) {
+            if (!this.context.entryPoints.includes(res)) {
+              this.context.entryPoints.push(res);
+            }
+            const node = this.context.getOrCreateNode(res);
+            node.isEntry = true;
+          }
         }
       }
     }
@@ -626,7 +654,9 @@ export class RefactoringEngine {
 
     for (const seedPath of seeds) {
       if (this.context.projectGraph.has(seedPath)) {
-        this.context.projectGraph.get(seedPath).isLibraryEntry = true;
+        const node = this.context.projectGraph.get(seedPath);
+        node.isLibraryEntry = true;
+        node.isEntry = true;
       }
     }
 
@@ -674,6 +704,43 @@ export class RefactoringEngine {
             node.outgoingEdges.add(traceResolution.originFile);
             // Register the actual resolved symbol for dead export detection
             node.importedSymbols.add(`${traceResolution.originFile}:${traceResolution.originSymbol}`);
+          }
+        }
+      }
+
+      // C. Dynamic Import Heuristics (Fix for non-literal dynamic imports)
+      // If a file has calculated dynamic imports (e.g. import(variable)), 
+      // we check all raw strings in that file as potential targets.
+      if (node.calculatedDynamicImports && node.calculatedDynamicImports.length > 0) {
+        for (const candidate of node.rawStringReferences) {
+          // Rule 1: Try resolving it directly
+          const resolvedPath = this.resolver.resolveModulePath(filePath, candidate);
+          if (resolvedPath && this.context.projectGraph.has(resolvedPath)) {
+            const targetNode = this.context.projectGraph.get(resolvedPath);
+            targetNode.incomingEdges.add(filePath);
+            node.outgoingEdges.add(resolvedPath);
+            targetNode.isLibraryEntry = true;
+            if (this.context.verbose) console.log(ansis.dim(`🔗 Dynamic Heuristic (Resolved): Linked ${candidate} from ${filePath}`));
+            continue;
+          }
+
+          // Rule 2: Check all possible internal files for partial matches
+          if (candidate.length > 3) { // Avoid very short strings
+            for (const [targetPath, targetNode] of this.context.projectGraph.entries()) {
+               const relToCwd = path.relative(this.context.cwd, targetPath).replace(/\\/g, '/');
+               const relNoExt = relToCwd.replace(/\.[^/.]+$/, "");
+               
+               // Check for exact relative path matches or partial matches that look intentional
+               if (candidate === relToCwd || candidate === relNoExt || 
+                   candidate === `./${relToCwd}` || candidate === `./${relNoExt}` ||
+                   (candidate.includes('/') && targetPath.endsWith(candidate.startsWith('/') ? candidate : `/${candidate}`))) {
+                  
+                  targetNode.incomingEdges.add(filePath);
+                  node.outgoingEdges.add(targetPath);
+                  targetNode.isLibraryEntry = true;
+                  if (this.context.verbose) console.log(ansis.dim(`🔗 Dynamic Heuristic (Partial): Linked ${candidate} to ${relToCwd} from ${filePath}`));
+               }
+            }
           }
         }
       }
