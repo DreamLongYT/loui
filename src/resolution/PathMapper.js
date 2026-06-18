@@ -27,7 +27,7 @@ export class PathMapper {
       // Strip inline single-line and block comments before parsing
       // Improved regex to handle more edge cases in tsconfig comments
       const jsonCleanText = rawText
-        .replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, '$1')
+        .replace(/\/\*[\s\S]*?\*\/|(?<=[^\\:])\/\/.*$/gm, '')
         .replace(/,(\s*[\]}])/g, '$1'); // Remove trailing commas
         
       const tsconfig = JSON.parse(jsonCleanText);

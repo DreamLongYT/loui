@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * Headless API for entkapp v4.2.0
+ * Headless API for entkapp v4.1.0
  * ============================================================================
  * Provides a programmatic interface for integrating entkapp into
  * custom workflows, CI/CD pipelines, and third-party tools.

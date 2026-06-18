@@ -22,7 +22,7 @@ export class OxcAnalyzer {
       } catch (err) {
         this.isAvailable = false;
         if (this.context.verbose) {
-          console.warn("[OxcAnalyzer] oxc-parser not found or failed to load.");
+          console.warn(`[OxcAnalyzer] oxc-parser failed to load: ${err.message}`);
         }
         return false;
       }

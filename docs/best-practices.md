@@ -2,7 +2,7 @@
 
 ## Overview
 
-To get the most out of entkapp v4.3.0, follow these best practices for project structure, configuration, and workflow integration.
+To get the most out of entkapp v4.4.0, follow these best practices for project structure, configuration, and workflow integration.
 
 ## Project Structure
 

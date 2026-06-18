@@ -178,6 +178,15 @@ export class BarrelParser {
     }
 
     // Rule D: Sweep through anonymous star re-exports vectors (export * from 'module')
+    //
+    // Algorithm:
+    // 1. For each `export * from './child'`, recursively resolve the symbol in the child.
+    // 2. A non-barrel child immediately returns `{ originFile: childPath }` regardless of
+    //    whether it actually declares the symbol.  We therefore must verify that the
+    //    returned origin file actually contains the symbol in its declaredLocalExports
+    //    before accepting the result.
+    // 3. If the child is itself a barrel, the recursive call already performs the full
+    //    chain walk, so we only need to verify the final origin.
     for (const relativePath of spec.wildcardExports) {
       const fullyResolvedPath = this.resolver.resolveModulePath(contextFilePath, relativePath);
       
@@ -186,13 +195,22 @@ export class BarrelParser {
           fullyResolvedPath,
           targetSymbolName,
           activeProjectGraph,
-          new Set(protectionStack)
+          new Set(protectionStack) // Use a copy so sibling branches don't block each other
         );
 
         if (!continuousResolutionTrace) continue;
+        if (continuousResolutionTrace.originFile === contextFilePath) continue;
 
+        // Verify that the resolved origin actually declares the symbol.
+        // This prevents a non-barrel sibling (e.g. constants.ts) from being
+        // incorrectly returned for a symbol it does not export (e.g. formatData).
         const originSpec = await this.parseBarrelSpecification(continuousResolutionTrace.originFile);
         if (originSpec.declaredLocalExports.has(continuousResolutionTrace.originSymbol)) {
+          return continuousResolutionTrace;
+        }
+        // The origin spec is itself a barrel (isBarrelInstance = true) and the
+        // recursive call already resolved through it – accept the result.
+        if (originSpec.isBarrelInstance) {
           return continuousResolutionTrace;
         }
       }

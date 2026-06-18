@@ -1,7 +1,6 @@
 import ts from 'typescript';
 import path from 'path';
 import fs from 'fs';
-import ansis from 'ansis';
 
 export class ASTAnalyzer {
   constructor(context) {
@@ -36,6 +35,7 @@ export class ASTAnalyzer {
     this.scopeStack.push(this.currentScope);
 
     this.extractTopLevelJSDocSuppreessions(sourceFile, fileNode);
+    fileNode.ast = sourceFile; // Store the AST for advanced analysis
     this.walkAST(sourceFile, fileNode, sourceFile);
 
     this.scopeStack.pop(); // Pop the global scope
@@ -399,20 +399,17 @@ export class ASTAnalyzer {
     if (node.expression.kind === ts.SyntaxKind.ImportKeyword) {
       const arg = node.arguments[0];
       if (arg) {
-        if (!fileNode.calculatedDynamicImports) fileNode.calculatedDynamicImports = [];
-        fileNode.calculatedDynamicImports.push({ kind: ts.SyntaxKind[arg.kind], start: arg.getStart(sourceFile) });
-        
-        // Ensure the argument text is also in rawStringReferences if it's a literal
-        if (ts.isStringLiteral(arg) || ts.isNoSubstitutionTemplateLiteral(arg)) {
-           fileNode.rawStringReferences.add(arg.text);
-        }
-
         if (ts.isStringLiteral(arg)) {
           fileNode.explicitImports.add(arg.text);
           fileNode.dynamicImports.add(arg.text);
           // Track external package usage from dynamic imports
           if (!arg.text.startsWith('.') && !arg.text.startsWith('/')) {
             fileNode.externalPackageUsage.add(this._extractPackageName(arg.text));
+          }
+        } else {
+          // Dynamic import with a non-literal expression (e.g., variable or template literal).
+          if (fileNode.calculatedDynamicImports) {
+            fileNode.calculatedDynamicImports.push({ kind: ts.SyntaxKind[arg.kind], start: arg.getStart(sourceFile) });
           }
         }
       }

@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * Plugin SDK for entkapp v4.2.0
+ * Plugin SDK for entkapp v4.0.0
  * ============================================================================
  * Provides utilities and helpers for developing custom plugins that extend
  * entkapp's analysis and healing capabilities.

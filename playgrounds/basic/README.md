@@ -27,3 +27,10 @@ npx knip
 # Detailed analysis including unused exports
 npx knip --exports
 ```
+---
+
+## 🧪 Experiments for You
+1. **Zero-Config Challenge**: Run both tools without any configuration file. Who finds more cycles? Who detects more dead code?
+2. **The "Fix" Challenge**: If you're feeling brave, run `entkapp` with `--fix` and see how it structurally cleans up the project.
+
+Enjoy the analysis!

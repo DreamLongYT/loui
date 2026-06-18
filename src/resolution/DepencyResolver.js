@@ -1,5 +1,6 @@
 import resolve from 'enhanced-resolve';
 import path from 'path';
+import { existsSync } from 'fs';
 
 /**
  * Industrial-Strength Module Resolution Supervisor
@@ -89,10 +90,21 @@ export class DependencyResolver {
     // Rule C: Standard file system lookups
     try {
       const resolvedPath = this.nativeResolver(containingDir, effectiveSpecifier);
+      
+      // Fix: Improved handling for dynamic exports/imports
       if (this.isAbsoluteInternalPath(resolvedPath)) {
         return resolvedPath;
       }
     } catch (err) {
+      // Fallback: Try to resolve with common extensions if enhanced-resolve fails
+      const extensions = ['.ts', '.tsx', '.js', '.jsx'];
+      for (const ext of extensions) {
+        try {
+          const trialPath = effectiveSpecifier.endsWith(ext) ? effectiveSpecifier : effectiveSpecifier + ext;
+          const resolvedPath = path.resolve(containingDir, trialPath);
+          if (existsSync(resolvedPath)) return resolvedPath;
+        } catch {}
+      }
       if (this.context.verbose) {
         console.debug(`[Resolution Trace Skip] Specifier unresolvable: ${effectiveSpecifier} inside ${containingFile}`);
       }

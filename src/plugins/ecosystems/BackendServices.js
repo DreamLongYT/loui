@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * Backend Services Plugins for entkapp v4.2.0
+ * Backend Services Plugins for entkapp v4.1.0
  * ============================================================================
  * Built-in support for GraphQL, REST APIs, and Databases.
  */

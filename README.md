@@ -28,23 +28,6 @@ It represents the process of stripping away the unnecessary layers of a codebase
 ## 📦 Installation
 
 ```bash
-npm install -g entkapp
+npm install -D entkapp
 # or
-pnpm add -g entkapp
-```
-
-## Usage
-```bash
-npx entkapp
-# or
-entkapp
-# and then
-npx entkapp -r
-# or
-entkapp -r
-# It is recommended to run with --no-fix tag on your first run!
-```
-
----
-## 🛝Playgrounds
-Visit our ready-made Playgrounds at our [Documentation Website](https://dreamlongyt.github.io/entkapp/playgrounds/)
+pnpm add -D entkapp

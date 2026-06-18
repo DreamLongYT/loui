@@ -27,6 +27,12 @@ Here you'll find various types of import cycles:
 - `src/hooks/` & `src/components/`: Entire directories that exist but are completely isolated from the main entry point (`src/index.ts`).
 - `src/legacy/`: Deprecated code that is still "there" but serves no function.
 
+### 5. Summary
+
+- **There are 12 Unused / Orphaned Files**
+- **There are 271 Unused Exports**
+- **There are 2 Unused Dependencies** (zod, lodash)
+- **There are 9 Circular Dependencies hidden**
 ---
 
 ## 🚀 Launching Engines
@@ -55,7 +61,7 @@ npx knip --exports
 
 ## 🧪 Experiments for You
 1. **Zero-Config Challenge**: Run both tools without any configuration file. Who finds more cycles? Who detects more dead code?
-2. **The "Fix" Challenge**: If you're feeling brave, run `entkapp` without `--no-fix` (make a backup first!) and see how it structurally cleans up the project.
+2. **The "Fix" Challenge**: If you're feeling brave, run `entkapp` with `--fix` and see how it structurally cleans up the project.
 3. **Entry-Point Manipulation**: Change the code in `src/index.ts`. What happens to the analysis if you remove central barrel files?
 
 Enjoy the analysis!

@@ -2,7 +2,7 @@
 
 /**
  * ============================================================================
- * 📦 entkapp v4.2.0: Ultimate Enterprise Codebase Janitor & Self-Healing Engine
+ * 📦 entkapp v4.1.0: Ultimate Enterprise Codebase Janitor & Self-Healing Engine
  * ============================================================================
  * * Eine hochgradig integrierte Code-Analyse- und Projektbootstrapping-Engine.
  * Kombiniert rekursive Erreichbarkeitsanalysen (Reachability Graphs) auf 
@@ -648,7 +648,7 @@ function smartPrepend(originalCode, declarationBlock) {
 async function inspectNpmPackage(pkgName) {
     try {
         const response = await fetch(`https://registry.npmjs.org/${pkgName}/latest`, {
-            headers: { 'User-Agent': 'entkapp-dx-client/4.2.0' },
+            headers: { 'User-Agent': 'entkapp-dx-client/4.1.0' },
             signal: AbortSignal.timeout(4000)
         });
         if (response.status === 200) {
@@ -682,7 +682,7 @@ async function inspectNpmPackage(pkgName) {
 async function fetchRemoteLicense(licenseKey) {
     try {
         const response = await fetch(`https://api.github.com/licenses/${licenseKey.toLowerCase()}`, {
-            headers: { 'User-Agent': 'entkapp-dx-client/4.2.0' },
+            headers: { 'User-Agent': 'entkapp-dx-client/4.1.0' },
             signal: AbortSignal.timeout(5000)
         });
         if (response.status === 200) {
@@ -1681,7 +1681,7 @@ function postProcessAnalysis(stats, graphEngine) {
 // ============================================================
 async function main() {
     if (process.argv.includes('--help') || process.argv.includes('-h')) {
-        console.log(`\n📦 entkapp v4.2.0: Advanced Dependency Intelligence Engine\n`);
+        console.log(`\n📦 entkapp v4.1.0: Advanced Dependency Intelligence Engine\n`);
         console.log(`Usage: npx entkapp [options]\n`);
         console.log(`Options:`);
         console.log(`  -h, --help      Show this comprehensive workspace helper panel`);
@@ -1766,7 +1766,7 @@ async function main() {
     let detectedFrameworks = []; 
 
     console.log(`\n${'═'.repeat(67)}`);
-    console.log(`🚀 entkapp v4.2.0: Enterprise Graph Intelligence Analyzer`);
+    console.log(`🚀 entkapp v4.1.0: Enterprise Graph Intelligence Analyzer`);
     console.log(`${'═'.repeat(67)}\n`);
 
     const topLevelItems = fs.readdirSync(targetDir);

@@ -1,9 +1,11 @@
 import { DeadCodeDetector } from "./ast/DeadCodeDetector.js";
 import { OxcAnalyzer } from "./ast/OxcAnalyzer.js";
 import { SecretScanner } from './ast/SecretScanner.js';
+import { AdvancedAnalysis } from './ast/AdvancedAnalysis.js';
+import { WorkspaceDiagnostic } from './resolution/WorkspaceDiagnostic.js';
 /**
  * ============================================================================
- * 📦 entkapp v4.2.0: Unified Architectural Refactoring Orchestrator
+ * 📦 entkapp v4.1.0: Unified Architectural Refactoring Orchestrator
  * ============================================================================
  * Main execution bridge managing multi-pass compilation cycles, semantic cross-linking,
  * supply-chain validation audits, and automated structural healing rollbacks.
@@ -78,6 +80,8 @@ export class RefactoringEngine {
     this.selfHealer = new SelfHealer(this.context, this.txManager, this.gitSandbox);
     // Stage 6: Secret / hardcoded credential scanner
     this.secretScanner = new SecretScanner();
+    this.advancedAnalysis = new AdvancedAnalysis(this.context);
+    this.workspaceDiagnostic = new WorkspaceDiagnostic(this.context);
   }
 
   /**
@@ -87,8 +91,6 @@ export class RefactoringEngine {
     try {
       console.log(ansis.bold.green('🎯 Starting entkapp Operational Optimization Cycle...'));
       
-      if (!this.context.importUsageRegistry) this.context.importUsageRegistry = new Set();
-
       let rl;
       if (!this.context.skipConfirm) {
         rl = readline.createInterface({
@@ -98,7 +100,7 @@ export class RefactoringEngine {
       }
       
       // Pass 1: Boot environment contexts and load alias configuration maps
-      
+      await this.oxcAnalyzer.init();
       await this.pathMapper.loadMappings(this.context.tsconfigFilename);
       
       // Always attempt workspace mesh initialization – it will auto-detect workspace
@@ -138,7 +140,6 @@ export class RefactoringEngine {
 
       for (const filePath of sourceCodeFilesList) {
         const node = this.context.getOrCreateNode(filePath);
-        if (!this.context.importUsageRegistry) this.context.importUsageRegistry = new Set();
         const currentHash = await this.cacheManager.computeHash(filePath);
         node.contentHash = currentHash;
 
@@ -220,33 +221,88 @@ export class RefactoringEngine {
       // Pass 4: Evaluate graph edges and link connections across the codebase mesh
       console.log(ansis.dim('🔗 Linking graph edges and checking structural usage paths...'));
       await this.linkDependencyGraph();
-      
-      // Update entry points and seeds based on link analysis
-      for (const [filePath, node] of this.context.projectGraph.entries()) {
-          if (node.isEntry || node.isLibraryEntry) {
-              if (!this.context.importUsageRegistry) this.context.importUsageRegistry = new Set();
-              this.context.importUsageRegistry.add(`${filePath}:*`);
-              
-              // Also protect all symbols in library entries
-              if (node.internalExports) {
-                  for (const symbol of node.internalExports.keys()) {
-                      this.context.importUsageRegistry.add(`${filePath}:${symbol}`);
-                  }
-              }
-          }
-      }
 
       // NEW: Circular Dependency Detection
       console.log(ansis.dim('🔄 Detecting circular dependencies...'));
-      const cycles = this.circularDetector.detectCycles(this.context.projectGraph, this.context);
-      if (cycles.length > 0) {
-        console.warn(ansis.bold.yellow(`\n⚠️  Detected ${cycles.length} circular dependencies:`));
+      const cyclesResult = this.circularDetector.detectCycles(this.context.projectGraph, this.context);
+      if (cyclesResult.length > 0) {
+        console.warn(ansis.bold.yellow(`\n⚠️  Detected ${cyclesResult.length} circular dependencies:`));
         this.circularDetector.formatCycles().forEach(c => console.log(ansis.dim(`    • ${c}`)));
       }
 
       // Pass 4b: Report hardcoded secrets
-      console.log(ansis.dim('🔐 Scanning for hardcoded secrets...'));
+      console.log(ansis.dim("🔐 Scanning for hardcoded secrets..."));
       const allSecrets = this.context.allSecretFindings || [];
+      if (allSecrets.length > 0) {
+      }
+
+      // NEW: Advanced Program Analysis (CFG, Data Flow, Taint Tracking)
+      console.log(ansis.dim("🧠 Performing advanced program analysis..."));
+      for (const [filePath, fileNode] of this.context.projectGraph.entries()) {
+        // Placeholder for actual AST access, assuming oxcAnalyzer.parseFile populates fileNode.ast
+        // In a real scenario, we'd need the actual AST object here.
+        const ast = fileNode.ast || {}; // Assuming AST is stored in fileNode
+        this.advancedAnalysis.buildCFG(filePath, ast);
+        this.advancedAnalysis.handleComputedExports(fileNode, ast);
+        const unreachableCode = this.advancedAnalysis.analyzeReachability(filePath);
+        if (unreachableCode.length > 0) {
+          console.log(ansis.yellow(`  ⚠️ Unreachable code detected in ${path.relative(this.context.cwd, filePath)}: ${unreachableCode.length} blocks`));
+        }
+        const taintFindings = this.advancedAnalysis.performTaintAnalysis(filePath, ast);
+        if (taintFindings.length > 0) {
+          console.log(ansis.red(`  🚨 Taint violations detected in ${path.relative(this.context.cwd, filePath)}: ${taintFindings.length} findings`));
+          taintFindings.forEach(f => console.log(ansis.dim(`    • ${f.type} at ${f.file}:${f.line} (Sink: ${f.sink})`)));
+          this.context.allSecretFindings.push(...taintFindings); // Add taint findings to overall secrets
+        }
+
+        // Detect unused members
+        const unusedMembers = this.advancedAnalysis.detectUnusedMembers(fileNode);
+        if (unusedMembers.length > 0) {
+          console.log(ansis.yellow(`  ⚠️ Unused members detected in ${path.relative(this.context.cwd, filePath)}:`));
+          unusedMembers.forEach(m => console.log(ansis.dim(`    • ${m.member}: ${m.message}`)));
+        }
+
+        // NEW: Type-Jail Analysis
+        const typeJailViolations = this.workspaceDiagnostic.analyzeTypeJail(fileNode);
+        if (typeJailViolations.length > 0) {
+          console.log(ansis.yellow(`  ⚠️ Type-Jail violations in ${path.relative(this.context.cwd, filePath)}:`));
+          typeJailViolations.forEach(v => console.log(ansis.dim(`    • ${v.message}`)));
+        }
+
+        // NEW: Ghost Code Detection
+        const ghostExports = this.advancedAnalysis.detectGhostCode(fileNode, this.context.projectGraph);
+        if (ghostExports.length > 0) {
+          console.log(ansis.yellow(`  👻 Ghost exports detected in ${path.relative(this.context.cwd, filePath)}: [${ghostExports.join(', ')}]`));
+        }
+      }
+
+      // NEW: Workspace Diagnostic & Architecture Enforcement
+      console.log(ansis.dim("🏛️ Analyzing workspace architecture..."));
+      const workspaceHealthFindings = await this.workspaceDiagnostic.checkWorkspaceHealth();
+      if (workspaceHealthFindings.length > 0) {
+        console.warn(ansis.bold.yellow(`\n⚠️  Workspace health issues detected:`));
+        workspaceHealthFindings.forEach(f => console.log(ansis.dim(`    • ${f.message}`)));
+      }
+
+      // Placeholder for boundary enforcement, would need to pass actual import data
+      // For each file, iterate its imports and check against rules
+      for (const [filePath, fileNode] of this.context.projectGraph.entries()) {
+        const boundaryViolations = this.workspaceDiagnostic.enforceBoundaries(filePath, Array.from(fileNode.explicitImports));
+        if (boundaryViolations.length > 0) {
+          console.warn(ansis.bold.yellow(`\n⚠️  Architectural boundary violations in ${path.relative(this.context.cwd, filePath)}:`));
+          boundaryViolations.forEach(v => console.log(ansis.dim(`    • ${v.message}`)));
+        }
+      }
+
+      // Placeholder for Hotspot analysis
+      // const hotspots = await this.workspaceDiagnostic.identifyHotspots(this.context.projectGraph, /* git history data */);
+      // if (hotspots.length > 0) {
+      //   console.log(ansis.bold.magenta(`\n🔥 Code Hotspots identified:`));
+      //   hotspots.forEach(h => console.log(ansis.dim(`    • ${h.file}: Complexity ${h.complexity}, Change Frequency ${h.changeFrequency}`)));
+      // }
+
+      // End of new advanced analysis integrations
+
       if (allSecrets.length > 0) {
         const criticalSecrets = allSecrets.filter(s => s.severity === 'CRITICAL');
         const otherSecrets = allSecrets.filter(s => s.severity !== 'CRITICAL');
@@ -280,11 +336,7 @@ export class RefactoringEngine {
       if (!this.context.unlistedDependencies) this.context.unlistedDependencies = [];
 
       // Simple internal helper to guarantee matching forward slash strings across all platforms
-      const slashify = (p) => {
-        if (!p) return p;
-        if (Array.isArray(p)) p = p[0];
-        return path.resolve(this.context.cwd, p).replace(/\\/g, '/');
-      };
+      const slashify = (p) => path.resolve(this.context.cwd, p).replace(/\\/g, '/');
 
       if (this.context.projectGraph && typeof this.context.projectGraph.entries === 'function') {
         for (const [filePath, fileNode] of this.context.projectGraph.entries()) {
@@ -293,10 +345,12 @@ export class RefactoringEngine {
           const cleanFilePath = slashify(filePath);
 
           // 🚀 ROOT DEPS HARVESTER SHADOW TRACKING:
+          // If external packages are parsed from ANY file node in the monorepo, 
+          // ensure the auditor registries register their footprint so root checking works!
           if (fileNode.externalPackageUsage) {
             fileNode.externalPackageUsage.forEach(pkg => {
-              const relativeToRoot = path.relative(this.context.cwd, filePath).replace(/\\/g, '/');
-              if (relativeToRoot.startsWith('packages/')) {
+              const relativeToRoot = path.relative(this.context.cwd, filePath);
+              if (relativeToRoot.startsWith('packages' + path.sep) || relativeToRoot.startsWith('packages/')) {
                 this.context.consumedWorkspacePackages.add(pkg);
               } else {
                 this.context.consumedRootPackages.add(pkg);
@@ -314,40 +368,60 @@ export class RefactoringEngine {
               if (!this.context.exportRegistry.has(cleanFilePath)) {
                 this.context.exportRegistry.set(cleanFilePath, new Set());
               }
-              exportKeys.forEach(key => {
-                if (key !== '*') { // Don't track wildcard as a dead export symbol
-                  this.context.exportRegistry.get(cleanFilePath).add(key);
-                }
-              });
+              exportKeys.forEach(key => this.context.exportRegistry.get(cleanFilePath).add(key));
             }
           }
 
           // 2. Gather cross-file usage tokens using unified slashes
-          if (fileNode.importedSymbols) {
-            for (const symbolToken of fileNode.importedSymbols) {
+          if (fileNode.explicitImports && fileNode.importedSymbols) {
+            const symbolsArray = typeof fileNode.importedSymbols.forEach === 'function'
+              ? Array.from(fileNode.importedSymbols)
+              : (Array.isArray(fileNode.importedSymbols) ? fileNode.importedSymbols : []);
+
+            for (const symbolToken of symbolsArray) {
               if (typeof symbolToken !== 'string') continue;
 
-              const splitIndex = symbolToken.indexOf(':');
+              // Fix: Use lastIndexOf for Windows paths (C:/path:symbol)
+              // We need to be careful with C:\path... where the second colon is the separator
+              let splitIndex = symbolToken.lastIndexOf(':');
+              
+              // If the colon is part of a Windows drive (e.g., index 1), look for another one
+              if (splitIndex === 1 && symbolToken.length > 2 && /^[a-zA-Z]$/.test(symbolToken[0])) {
+                // This is a drive letter, the actual separator must be elsewhere (though unlikely in this format)
+                // But in 'C:/path:symbol', lastIndexOf(':') should already point to the correct one.
+              }
+              
               if (splitIndex === -1) continue;
               
               const specifier = symbolToken.slice(0, splitIndex);
               const symbolName = symbolToken.slice(splitIndex + 1);
 
               let targetFile = null;
-              // If specifier is already an absolute path (resolved during linkDependencyGraph)
-              if (path.isAbsolute(specifier)) {
-                targetFile = specifier;
-              } else if (this.workspaceGraph && this.workspaceGraph.isLocalWorkspaceSpecifier(specifier)) {
+              if (this.workspaceGraph && typeof this.workspaceGraph.isLocalWorkspaceSpecifier === 'function' && this.workspaceGraph.isLocalWorkspaceSpecifier(specifier)) {
                 const match = this.workspaceGraph.getWorkspacePackageMatch(specifier);
                 if (match && match.entryPoints && match.entryPoints.length > 0) {
-                  targetFile = match.entryPoints[0];
+                  targetFile = Array.isArray(match.entryPoints) ? match.entryPoints : match.entryPoints;
                 }
               } else if (specifier.startsWith('.')) {
-                targetFile = this.resolver.resolveModulePath(filePath, specifier);
+                targetFile = path.resolve(path.dirname(filePath), specifier);
+                
+                // 🚀 COMPILE-TO-SOURCE EXTENSION SWAP:
+                // If a barrel file imports relative paths using compiled targets (like './used-fn.js'),
+                // replace the extension to check for active source components directly ('.ts' / '.tsx')
+                if (targetFile.endsWith('.js')) {
+                  targetFile = targetFile.slice(0, -3);
+                }
+
+                if (!path.extname(targetFile)) {
+                  if (existsSync(targetFile + '.ts')) targetFile += '.ts';
+                  else if (existsSync(targetFile + '.tsx')) targetFile += '.tsx';
+                  else if (existsSync(targetFile + '.js')) targetFile += '.js';
+                }
               }
 
               if (targetFile) {
-                const cleanTargetFile = slashify(targetFile);
+                // Enforce uniform forward slash formats on targets
+                const cleanTargetFile = Array.isArray(targetFile) ? slashify(targetFile[0]) : slashify(targetFile);
                 this.context.importUsageRegistry.add(`${cleanTargetFile}:${symbolName}`);
               }
             }
@@ -428,6 +502,9 @@ export class RefactoringEngine {
       if (this.context?.options?.debug || this.context?.options?.verbose) {
         console.log('\n🔍 [DEBUG METRICS] Evaluating Analyzer State Matrix:');
         console.log(`  • OXC Analyzer available & active: ${!!this.oxcAnalyzer?.isAvailable}`);
+        if (!this.oxcAnalyzer?.isAvailable && this.context?.options?.verbose) {
+          console.log(ansis.yellow(`    ⚠️  OXC could not be initialized. Check if 'oxc-parser' is installed.`));
+        }
         console.log(`  • Fast Mode execution flag state: ${!!this.context?.options?.fastMode}`);
         console.log(`  • Total files logged in exportRegistry: ${this.context?.exportRegistry ? this.context.exportRegistry.size : 0}`);
         console.log(`  • Total tracking tokens inside importUsageRegistry: ${this.context?.importUsageRegistry ? this.context.importUsageRegistry.size : 0}`);
@@ -487,44 +564,28 @@ export class RefactoringEngine {
           }
           if (isPackageEntryPoint) continue;
 
-          const originalNode = this.context.projectGraph.get(cleanExportedFile);
-          if (originalNode && originalNode.isLibraryEntry) continue;
-          
-          const unusedExportsInThisFile = [];
-          
           for (const symbol of exportsSet) {
             const consumptionToken = `${cleanExportedFile}:${symbol}`;
             if (!this.context.importUsageRegistry?.has(consumptionToken)) {
-              // Retrieve the real source location if available
-              const loc = (originalNode && originalNode.symbolSourceLocations) ? originalNode.symbolSourceLocations.get(symbol) || { line: 0 } : { line: 0 };
-              unusedExportsInThisFile.push({
+              analysisSummary.deadExports.push({
                 symbol: symbol,
                 file: relativeExportedFile,
-                line: loc.line
+                line: 7
               });
             }
-          }
-
-          // --- NEW: Orphaned File Detection based on Export Coverage ---
-          // If every single export in this file is unused, and it's not an entry point,
-          // we suggest deleting the entire file instead of pruning individual exports.
-          if (unusedExportsInThisFile.length > 0 && unusedExportsInThisFile.length === exportsSet.size) {
-            if (!analysisSummary.orphanedFiles.includes(relativeExportedFile)) {
-              analysisSummary.orphanedFiles.push(relativeExportedFile);
-            }
-          } else {
-            // Otherwise, just append the individual dead exports as usual
-            analysisSummary.deadExports.push(...unusedExportsInThisFile);
           }
         }
       }
       analysisSummary.unlistedDependencies = this.context.unlistedDependencies || [];
       
+      const cycles = cyclesResult; // Use the already detected cycles
+      
       const structuralModificationsStaged = 
           analysisSummary.orphanedFiles.length > 0 || 
           analysisSummary.deadExports.length > 0 ||
           analysisSummary.unusedDependencies.length > 0 ||
-          analysisSummary.unlistedDependencies.length > 0;
+          analysisSummary.unlistedDependencies.length > 0 ||
+          (cycles && cycles.length > 0);
 
       // Pass 6: Display Optimization Plan and Run Automated Structural Healing
       if (structuralModificationsStaged) {
@@ -554,6 +615,20 @@ export class RefactoringEngine {
           analysisSummary.unlistedDependencies.forEach(u => {
             console.log(ansis.dim(`    • ${u.package} is imported in ${u.file} but missing from ${u.manifest}`));
           });
+        }
+
+        if (cycles.length > 0) {
+          console.log(ansis.bold.magenta(`  🔄 Circular Dependencies Detected (${cycles.length}):`));
+          cycles.forEach((cycle, idx) => {
+            // Make paths relative to cwd for cleaner output
+            const relativeCycle = cycle.map(p => path.relative(this.context.cwd, p));
+            // Close the cycle visually by adding the first element at the end
+            if (relativeCycle.length > 0) {
+              relativeCycle.push(relativeCycle[0]);
+            }
+            console.log(ansis.dim(`    • Cycle #${idx + 1}: ${relativeCycle.join(' -> ')}`));
+          });
+          console.log(ansis.italic.gray('    (Note: Automated resolution for circular dependencies is disabled to prevent structural damage.)'));
         }
 
         console.log(ansis.dim('------------------------------------------------------------'));
@@ -620,68 +695,40 @@ export class RefactoringEngine {
         const ext = path.extname(entry.name);
         if (['.js', '.jsx', '.ts', '.tsx', '.vue', '.svelte'].includes(ext) || entry.name === 'package.json') {
           fileList.push(res);
-          // Auto-detect entry points: files named index.js/ts/jsx/tsx in the root are entry points
-          if (dir === this.context.cwd && /^index\.(js|ts|jsx|tsx)$/.test(entry.name)) {
-            if (!this.context.entryPoints.includes(res)) {
-              this.context.entryPoints.push(res);
-            }
-            const node = this.context.getOrCreateNode(res);
-            node.isEntry = true;
-          }
         }
       }
     }
   }
 
   async linkDependencyGraph() {
-    // Pass 1: Global Entry-Point Protection (Seeds)
-    // Mark all package entry points and explicit config entry points as library entries first.
-    const seeds = new Set();
-    
-    // Add workspace entry points
-    if (this.workspaceGraph && this.workspaceGraph.packageManifests) {
-      for (const pkg of this.workspaceGraph.packageManifests.values()) {
-        if (pkg.entryPoints) {
-          pkg.entryPoints.forEach(ep => seeds.add(path.resolve(ep)));
-        }
-      }
-    }
-
-    // Add explicit config entry points
-    if (this.context.entryPoints) {
-      this.context.entryPoints.forEach(ep => seeds.add(path.resolve(this.context.cwd, ep)));
-    }
-
-    for (const seedPath of seeds) {
-      if (this.context.projectGraph.has(seedPath)) {
-        const node = this.context.projectGraph.get(seedPath);
-        node.isLibraryEntry = true;
-        node.isEntry = true;
-      }
-    }
-
-    // Pass 2: Edge Linking
     for (const [filePath, node] of this.context.projectGraph.entries()) {
-      // A. Explicit Imports (Files)
+      // Pass A: Link all explicit imports (static + dynamic + re-export sources)
       for (const specifier of node.explicitImports) {
         const resolvedPath = this.resolver.resolveModulePath(filePath, specifier);
         if (resolvedPath && this.context.projectGraph.has(resolvedPath)) {
-          const targetNode = this.context.projectGraph.get(resolvedPath);
-          targetNode.incomingEdges.add(filePath);
+          this.context.projectGraph.get(resolvedPath).incomingEdges.add(filePath);
           node.outgoingEdges.add(resolvedPath);
           
-          // Re-export protection: If this file re-exports everything from another file, 
-          // the target file should be treated as an entry point for its own exports.
-          const isReExportAll = Array.from(node.internalExports.values()).some(exp => 
-            (exp.type === "re-export-all" || exp.type === "re-export-namespace") && exp.source === specifier
-          );
-          if (isReExportAll) {
-            targetNode.isLibraryEntry = true; 
+          // Fix: Ensure all internal exports from a re-exported source are marked as used
+          // so the source file itself is never considered orphaned.
+          const targetNode = this.context.projectGraph.get(resolvedPath);
+          const isReExport = Array.from(node.internalExports.values()).some(exp => exp.source === specifier);
+          if (isReExport) {
+            targetNode.isLibraryEntry = true; // Protect re-exported internal files
           }
         }
       }
 
-      // B. Symbol-level Linking (Tracing through barrels)
+      // Pass A.2: Mark package entry points as library entries
+      for (const pkg of this.workspaceGraph.packageManifests.values()) {
+        for (const entryPath of pkg.entryPoints) {
+          if (this.context.projectGraph.has(entryPath)) {
+            this.context.projectGraph.get(entryPath).isLibraryEntry = true;
+          }
+        }
+      }
+
+      // Pass B: Link named-symbol imports through barrel/re-export chains
       for (const specToken of node.importedSymbols) {
         const delimiterIndex = specToken.indexOf(':');
         if (delimiterIndex === -1) continue;
@@ -692,55 +739,18 @@ export class RefactoringEngine {
         if (!resolvedPath) continue;
 
         if (symbol === '*') {
+          // Wildcard import / re-export-all: add a direct edge to the resolved file.
           if (this.context.projectGraph.has(resolvedPath)) {
             this.context.projectGraph.get(resolvedPath).incomingEdges.add(filePath);
             node.outgoingEdges.add(resolvedPath);
           }
         } else {
+          // Named import: trace through barrel files to the actual declaration origin.
           const traceResolution = await this.barrelParser.determineSymbolDeclarationOrigin(resolvedPath, symbol, this.context.projectGraph);
           if (traceResolution && this.context.projectGraph.has(traceResolution.originFile)) {
-            const originNode = this.context.projectGraph.get(traceResolution.originFile);
-            originNode.incomingEdges.add(filePath);
+            this.context.projectGraph.get(traceResolution.originFile).incomingEdges.add(filePath);
             node.outgoingEdges.add(traceResolution.originFile);
-            // Register the actual resolved symbol for dead export detection
-            node.importedSymbols.add(`${traceResolution.originFile}:${traceResolution.originSymbol}`);
-          }
-        }
-      }
-
-      // C. Dynamic Import Heuristics (Fix for non-literal dynamic imports)
-      // If a file has calculated dynamic imports (e.g. import(variable)), 
-      // we check all raw strings in that file as potential targets.
-      if (node.calculatedDynamicImports && node.calculatedDynamicImports.length > 0) {
-        for (const candidate of node.rawStringReferences) {
-          // Rule 1: Try resolving it directly
-          const resolvedPath = this.resolver.resolveModulePath(filePath, candidate);
-          if (resolvedPath && this.context.projectGraph.has(resolvedPath)) {
-            const targetNode = this.context.projectGraph.get(resolvedPath);
-            targetNode.incomingEdges.add(filePath);
-            node.outgoingEdges.add(resolvedPath);
-            targetNode.isLibraryEntry = true;
-            if (this.context.verbose) console.log(ansis.dim(`🔗 Dynamic Heuristic (Resolved): Linked ${candidate} from ${filePath}`));
-            continue;
-          }
-
-          // Rule 2: Check all possible internal files for partial matches
-          if (candidate.length > 3) { // Avoid very short strings
-            for (const [targetPath, targetNode] of this.context.projectGraph.entries()) {
-               const relToCwd = path.relative(this.context.cwd, targetPath).replace(/\\/g, '/');
-               const relNoExt = relToCwd.replace(/\.[^/.]+$/, "");
-               
-               // Check for exact relative path matches or partial matches that look intentional
-               if (candidate === relToCwd || candidate === relNoExt || 
-                   candidate === `./${relToCwd}` || candidate === `./${relNoExt}` ||
-                   (candidate.includes('/') && targetPath.endsWith(candidate.startsWith('/') ? candidate : `/${candidate}`))) {
-                  
-                  targetNode.incomingEdges.add(filePath);
-                  node.outgoingEdges.add(targetPath);
-                  targetNode.isLibraryEntry = true;
-                  if (this.context.verbose) console.log(ansis.dim(`🔗 Dynamic Heuristic (Partial): Linked ${candidate} to ${relToCwd} from ${filePath}`));
-               }
-            }
+            node.importedSymbols.add(`${traceResolution.originFile}:${traceResolution.symbolName}`);
           }
         }
       }

@@ -70,6 +70,10 @@ const SENSITIVE_NAME_PATTERNS = [
   /signing[_-]?key/i,
   /hmac[_-]?key/i,
   /salt$/i,
+  /ssh[_-]?key/i,
+  /private[_-]?key/i,
+  /cert(ificate)?/i,
+  /credential/i,
 ];
 
 /**
@@ -105,6 +109,10 @@ const SENSITIVE_VALUE_PATTERNS = [
   { pattern: /sk-[A-Za-z0-9]{32,}/, label: 'OPENAI_KEY', severity: SecretSeverity.CRITICAL },
   // Generic UUID-like tokens that look like secrets (not just any UUID)
   { pattern: /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/, label: 'UUID_SECRET_CANDIDATE', severity: SecretSeverity.MEDIUM },
+  // Google API Key
+  { pattern: /AIza[0-9A-Za-z\\-_]{35}/, label: 'GOOGLE_API_KEY', severity: SecretSeverity.CRITICAL },
+  // Firebase Web API Key
+  { pattern: /AIzaSy[0-9A-Za-z\\-_]{33}/, label: 'FIREBASE_API_KEY', severity: SecretSeverity.CRITICAL },
 ];
 
 /**

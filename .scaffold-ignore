@@ -1,5 +1,5 @@
 # ============================================================================
-# ⚙️ entkapp Rule Suppression & Intent Profiles
+# ⚙️ loui Rule Suppression & Intent Profiles
 # ============================================================================
 # Define exact symbols, file patterns, or dependency keys that must remain 
 # preserved during dead-code scanning and transactional refactoring pruning.
@@ -20,5 +20,3 @@ tslib
 
 # Secret Heuristic Exemptions (Explicit False Positive Control)
 exempt_token_pattern
-
-playgrounds/

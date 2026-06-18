@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * Modern Frameworks Plugins for entkapp v4.2.0
+ * Modern Frameworks Plugins for entkapp v4.0.0
  * ============================================================================
  * Built-in support for React, Vue, Svelte, and Angular.
  */

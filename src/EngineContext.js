@@ -31,16 +31,12 @@ export class GraphNode {
     this.localSuppressedRules = new Set();
   }
 
-  isSymbolReferencedExternally(symbolName, projectGraph, context) {
+  isSymbolReferencedExternally(symbolName, projectGraph, visited = new Set()) {
+    const visitKey = `${this.filePath}:${symbolName}`;
+    if (visited.has(visitKey)) return false;
+    visited.add(visitKey);
+
     if (this.isLibraryEntry) return true;
-    
-    // Check global registry if provided
-    if (context && context.importUsageRegistry) {
-        if (context.importUsageRegistry.has(`${this.filePath}:${symbolName}`) || 
-            context.importUsageRegistry.has(`${this.filePath}:*`)) {
-            return true;
-        }
-    }
 
     // --- NEW: Self-reference check (Fix for SecretSeverity bug) ---
     // If the symbol is used within the same file, it is NOT dead.
@@ -78,6 +74,20 @@ export class GraphNode {
       if (parentNode.importedSymbols.has(importKey) || parentNode.importedSymbols.has(importKeyAlt) ||
           parentNode.importedSymbols.has(starKey) || parentNode.importedSymbols.has(starKeyAlt)) {
         return true;
+      }
+
+      // NEW: Check for re-exports that might use this symbol (Recursive Barrel Resolution)
+      for (const [exportedName, exportMeta] of parentNode.internalExports.entries()) {
+        const isMatch = (exportMeta.type === 're-export' || exportMeta.type === 're-export-namespace') && 
+                        (exportMeta.originalName === symbolName || exportMeta.originalName === '*') && 
+                        (exportMeta.source === this.filePath || (exportMeta.source && path.resolve(path.dirname(parentPath), exportMeta.source) === this.filePath));
+        
+        if (isMatch) {
+          // If this parent re-exports our symbol, check if the re-exported symbol is used
+          if (parentNode.isSymbolReferencedExternally(exportedName, projectGraph, visited)) {
+            return true;
+          }
+        }
       }
 
       if (parentNode.instantiatedIdentifiers.has(symbolName)) return true;
@@ -145,14 +155,12 @@ export class EngineContext {
         report.orphanedFiles.push(path.relative(this.cwd, filePath));
       }
 
-      if (node.isEntry || node.isLibraryEntry) continue;
-
       for (const [symbol, meta] of node.internalExports.entries()) {
         if (symbol === '*' || symbol === 'default' || node.localSuppressedRules.has('unused-export') || node.localSuppressedRules.has(`unused-export:${symbol}`)) {
           continue;
         }
 
-        if (!node.isSymbolReferencedExternally(symbol, this.projectGraph, this)) {
+        if (!node.isSymbolReferencedExternally(symbol, this.projectGraph)) {
           const loc = node.symbolSourceLocations.get(symbol) || { line: 0, column: 0 };
           report.deadExports.push({
             symbol,
@@ -168,9 +176,11 @@ export class EngineContext {
     for (const [manifestPath, deps] of this.manifestDependencies.entries()) {
       const allDeps = [...(deps.dependencies || []), ...(deps.devDependencies || [])];
       
+      const hasTypeScriptFiles = Array.from(this.projectGraph.keys()).some(f => f.endsWith('.ts') || f.endsWith('.tsx'));
+      
       for (const dep of allDeps) {
         // Skip @types packages and known safe packages
-        if (dep.startsWith('@types/') || dep === 'entkapp') {
+        if (dep.startsWith('@types/') || dep === 'entkapp' || (dep === 'typescript' && hasTypeScriptFiles)) {
           continue;
         }
         

@@ -1,7 +1,7 @@
 import { parentPort, workerData } from 'worker_threads';
 import fs from 'fs/promises';
 import { ASTAnalyzer } from '../ast/ASTAnalyzer.js';
-import { OxcAnalyzer } from '../ast/OxcAnalyzer.js';
+import { OxcAnalyzer } from '../analyzers/OxcAnalyzer.js';
 
 /**
  * Worker Thread Execution Script
@@ -37,6 +37,7 @@ async function runTask() {
 
   const astAnalyzer = new ASTAnalyzer(mockContext);
   const oxcAnalyzer = new OxcAnalyzer(mockContext);
+  await oxcAnalyzer.init();
 
   for (const filePath of files) {
     try {
@@ -44,9 +45,12 @@ async function runTask() {
       const node = mockContext.getOrCreateNode(filePath);
 
       // Use OXC if available, fallback to TS AST
+      let success = false;
       if (oxcAnalyzer.isAvailable) {
-        await oxcAnalyzer.parseFile(filePath, content, node);
-      } else {
+        success = await oxcAnalyzer.parseFile(filePath, content, node);
+      }
+      
+      if (!success) {
         await astAnalyzer.parseFile(filePath, content, node);
       }
 
@@ -73,7 +77,6 @@ async function runTask() {
       if (contextOptions.verbose) {
         console.error(`[Worker] Failed to parse ${filePath}: ${err.message}`);
       }
-      // Push null to keep array indices if needed, or just skip
       results.push(null);
     }
   }

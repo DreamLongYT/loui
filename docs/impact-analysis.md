@@ -2,7 +2,7 @@
 
 ## Overview
 
-Impact Analysis in entkapp v4.3.0 provides a "crystal ball" view of your codebase. It allows you to see exactly how a proposed change will ripple through your system, helping you avoid regressions and make informed decisions about refactoring.
+Impact Analysis in entkapp v4.4.0 provides a "crystal ball" view of your codebase. It allows you to see exactly how a proposed change will ripple through your system, helping you avoid regressions and make informed decisions about refactoring.
 
 ## Features
 
