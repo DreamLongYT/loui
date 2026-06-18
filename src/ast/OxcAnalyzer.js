@@ -42,9 +42,17 @@ export class OxcAnalyzer {
       
       // Fix: Use absolute path with forward slashes for OXC (most stable for Rust on Windows)
       const normalizedPath = filePath.replace(/\\/g, '/');
-      const normalizedContent = cleanContent.replace(/\/([gimuy]*)([nh]+)([gimuy]*)/g, (match, p1, p2, p3) => {
-        if (this.context.verbose) console.log(`[OXC] Normalizing regex flag: ${p2} at ${filePath}`);
-        return `/${p1}${p3}`;
+      // FIX: The previous regex was too aggressive and matched patterns that are NOT regex literals
+      // (like paths in strings or comments), causing it to strip characters and create invalid regex flags
+      // for OXC. We now only target what looks like a regex literal at the end of a line or statement.
+      const normalizedContent = cleanContent.replace(/\/([gimuy]*)([nh]+)([gimuy]*)(?=\s|[;,\)]|$)/g, (match, p1, p2, p3) => {
+        // Only normalize if it's likely a regex (flags p1/p3 are valid JS flags)
+        const validJSFlags = /^[gimuy]*$/;
+        if (validJSFlags.test(p1) && validJSFlags.test(p3)) {
+          if (this.context.verbose) console.log(`[OXC] Normalizing regex flag: ${p2} at ${filePath}`);
+          return `/${p1}${p3}`;
+        }
+        return match;
       });
       let result;
       try {
