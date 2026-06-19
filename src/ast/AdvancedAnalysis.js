@@ -112,6 +112,7 @@ export class AdvancedAnalysis {
    * Package.json Export Reachability
    */
   analyzeExportReachability(projectGraph, packageManifests) {
+    if (!packageManifests) return;
     for (const [pkgName, metadata] of packageManifests.entries()) {
       const publicEntries = new Set(metadata.entryPoints);
       
@@ -557,13 +558,13 @@ export class AdvancedAnalysis {
         this.analyzeDataIntegrity(filePath, node.ast);
         this.analyzeEventLeaks(filePath, node.ast);
         this.analyzeBinaryShaking(filePath, node.ast);
+        this.analyzeDereferences(filePath, node.ast);
+        this.analyzeClones(filePath, node.ast);
+        this.analyzeEscapes(filePath, node.ast);
+        this.analyzeLoops(filePath, node.ast);
+        this.analyzeConfigSanity(filePath, node.ast);
       }
       this.analyzeSandboxing(filePath, projectGraph);
-      this.analyzeDereferences(filePath, node.ast);
-      this.analyzeClones(filePath, node.ast);
-      this.analyzeEscapes(filePath, node.ast);
-      this.analyzeLoops(filePath, node.ast);
-      this.analyzeConfigSanity(filePath, node.ast);
     }
     this.analyzeExportReachability(projectGraph, packageManifests);
     

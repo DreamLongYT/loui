@@ -8,6 +8,11 @@ Production-ready structure with types and barrels.
 4. Detect `someHelper` in `src/utils/unused-util.ts` (re-exported via barrel).
 5. Identify `zod` as an unused dependency.
 
+### 📊 Ground Truth Summary
+- **0 Unused Files** (All files are correctly reachable from `app.ts` or `index.ts`)
+- **6 Unused Exports** (Including deep members like `Logger.error` and `Config.debug`)
+- **1 Unused Dependency** (`zod`)
+
 ## 🚀 Launching Engines
 
 You can run the engines directly in the terminal (e.g., on StackBlitz). Here are the commands for the Zero-Config stress test:

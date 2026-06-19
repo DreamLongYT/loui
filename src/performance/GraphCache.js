@@ -9,7 +9,24 @@ import crypto from 'crypto';
 export class IncrementalCacheManager {
   constructor(context) {
     this.context = context;
-    this.manifestPath = path.join(context.cacheDir || path.join(context.cwd, '.entkapp-cache'), 'graph-manifest.json');
+    this.cacheDir = context.cacheDir || path.join(context.cwd, '.entkapp-cache');
+    this.manifestPath = path.join(this.cacheDir, 'graph-manifest.json');
+  }
+
+  /**
+   * Clears the entire cache directory to ensure a fresh analysis run.
+   */
+  async clearCache() {
+    try {
+      await fs.rm(this.cacheDir, { recursive: true, force: true });
+      if (this.context.verbose) {
+        console.log(`🧹 Cache cleared at: ${this.cacheDir}`);
+      }
+    } catch (err) {
+      if (this.context.verbose) {
+        console.error(`🚨 Failed to clear cache: ${err.message}`);
+      }
+    }
   }
 
   /**
@@ -68,7 +85,9 @@ export class IncrementalCacheManager {
         symbolSourceLocations: Object.fromEntries(node.symbolSourceLocations),
         externalPackageUsage: Array.from(node.externalPackageUsage),
         isEntry: node.isEntry,
-        isFrameworkComponent: node.isFrameworkComponent
+        isFrameworkComponent: node.isFrameworkComponent,
+        calculatedDynamicImports: node.calculatedDynamicImports || [],
+        globImports: node.globImports || []
       };
     }
 

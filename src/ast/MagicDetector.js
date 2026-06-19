@@ -177,7 +177,7 @@ export class MagicDetector {
     if (!await this.isImplicitlyRequiredByEcosystem(filePath, activeFrameworks)) return;
 
     // Retain entry point elements within memory to keep verification safe
-    fileNode.isLibraryEntry = true;
+    fileNode.isEntry = true;
 
     // Apply dynamic exports coverage metrics based on active platform contracts
     const normalizedPath = filePath.replace(/\\/g, '/');

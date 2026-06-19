@@ -62,3 +62,64 @@ export class AstroPlugin extends BasePlugin {
     return false;
   }
 }
+
+/**
+ * Vitepress Ecosystem Plugin
+ */
+export class VitepressPlugin extends BasePlugin {
+  get name() {
+    return 'vitepress';
+  }
+
+  getConfigFiles() {
+    return ['package.json'];
+  }
+
+  async isActive(baseDir) {
+    // Vitepress is active if it's in package.json OR if .vitepress folder exists
+    try {
+      const pkgJson = JSON.parse(await fs.readFile(path.join(baseDir, 'package.json'), 'utf8'));
+      const hasDep = !!(pkgJson.dependencies?.vitepress || pkgJson.devDependencies?.vitepress);
+      
+      // Also check for .vitepress folder existence in common locations
+      const possibleDirs = ['.vitepress', 'docs/.vitepress', '.docs/.vitepress'];
+      for (const d of possibleDirs) {
+        try {
+          await fs.access(path.join(baseDir, d));
+          return true;
+        } catch {}
+      }
+      
+      return hasDep;
+    } catch {
+      return false;
+    }
+  }
+
+  async onDiscovery({ pkgDir, data, reachableFiles, queue, projectGraph, context }) {
+    const hasVitepressDir = Array.from(projectGraph.keys()).some(f => f.includes('/.vitepress/'));
+    const hasVitepressDep = !!(data.devDependencies?.vitepress || data.dependencies?.vitepress);
+
+    if (hasVitepressDir && hasVitepressDep) {
+      // Legitimate usage: Mark .vitepress files as reachable
+      for (const [filePath, _] of projectGraph.entries()) {
+        if (filePath.includes('/.vitepress/') && !reachableFiles.has(filePath)) {
+          reachableFiles.add(filePath);
+          queue.push(filePath);
+        }
+      }
+      // Mark vue as used since it's required by vitepress
+      if (!context.consumedRootPackages) context.consumedRootPackages = new Set();
+      context.consumedRootPackages.add('vitepress');
+      context.consumedRootPackages.add('vue');
+    } else if (hasVitepressDir && !hasVitepressDep) {
+      // Missing dependency case
+      if (!context.unlistedDependencies) context.unlistedDependencies = [];
+      context.unlistedDependencies.push({
+        name: 'vitepress',
+        reason: 'Found .vitepress configuration directory but package is not in package.json'
+      });
+    }
+    // If hasVitepressDep but !hasVitepressDir, it remains "unused" by default logic
+  }
+}

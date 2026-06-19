@@ -5,7 +5,6 @@
   // Plugin activation toggles
   "useBuiltinPlugins": true,
   "useCustomPlugins": true,
-  "supportKnipPlugins": true,
 
   // Engine performance and behavior options
   "options": {

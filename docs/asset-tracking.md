@@ -2,7 +2,7 @@
 
 ## Overview
 
-Asset Tracking in entkapp v4.5.1 allows you to manage static assets like images, videos, and fonts with the same precision as your source code. The engine analyzes how assets are referenced and identifies orphans that are no longer used.
+Asset Tracking in entkapp v5.0.0 allows you to manage static assets like images, videos, and fonts with the same precision as your source code. The engine analyzes how assets are referenced and identifies orphans that are no longer used.
 
 ## Features
 

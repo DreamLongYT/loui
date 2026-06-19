@@ -14,7 +14,7 @@
 
 import EventEmitter from 'events';
 import path from 'path';
-import { RefactoringEngine } from '../index.js';
+// import { RefactoringEngine } from '../index.js';
 
 export class HeadlessAPI extends EventEmitter {
   constructor(options = {}) {

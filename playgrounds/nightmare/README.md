@@ -27,12 +27,12 @@ Here you'll find various types of import cycles:
 - `src/hooks/` & `src/components/`: Entire directories that exist but are completely isolated from the main entry point (`src/index.ts`).
 - `src/legacy/`: Deprecated code that is still "there" but serves no function.
 
-### 5. Summary
+### 5. Summary (The Ground Truth)
 
-- **There are 12 Unused / Orphaned Files**
-- **There are 271 Unused Exports**
-- **There are 2 Unused Dependencies** (zod, lodash)
-- **There are 9 Circular Dependencies hidden**
+- **38 Unused / Orphaned Files** (Including `src/hooks`, `src/components`, and `src/legacy`)
+- **258+ Unused Exports** (Counting cascading dead code and unreferenced members)
+- **3 Unused Dependencies** (`zod`, `lodash`, and `knip`)
+- **9 Circular Dependencies** (From simple cycles to deep chains)
 ---
 
 ## 🚀 Launching Engines

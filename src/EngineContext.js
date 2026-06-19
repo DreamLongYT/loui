@@ -1,4 +1,6 @@
+import fsSync from 'fs';
 import path from 'path';
+import ansis from 'ansis';
 
 /**
  * Core In-Memory Graph Node Representation.
@@ -36,76 +38,62 @@ export class GraphNode {
     if (visited.has(visitKey)) return false;
     visited.add(visitKey);
 
-    if (this.isLibraryEntry) return true;
-
-    // --- NEW: Self-reference check (Fix for SecretSeverity bug) ---
-    // If the symbol is used within the same file, it is NOT dead.
+    // Self-reference check
     if (this.instantiatedIdentifiers.has(symbolName)) return true;
-    
-    // Check property access in the same file
     for (const accessChain of this.propertyAccessChains) {
-      if (accessChain.endsWith(`.${symbolName}`) || accessChain.includes(`.${symbolName}.`)) {
-        return true;
-      }
+      if (accessChain.endsWith(`.${symbolName}`) || accessChain.includes(`.${symbolName}.`)) return true;
     }
-    // --------------------------------------------------------------
     
     for (const parentPath of this.incomingEdges) {
       const parentNode = projectGraph.get(parentPath);
       if (!parentNode) continue;
 
-      // Strategy 1: Check absolute path based tokens
+      // Direct Import Tokens
       const absoluteImportKey = `${this.filePath}:${symbolName}`;
       const absoluteStarKey = `${this.filePath}:*`;
+      if (parentNode.importedSymbols.has(absoluteImportKey) || parentNode.importedSymbols.has(absoluteStarKey)) return true;
       
-      if (parentNode.importedSymbols.has(absoluteImportKey) || parentNode.importedSymbols.has(absoluteStarKey)) {
-        return true;
+      // Advanced Member Usage Detection
+      if (parentNode.propertyAccessChains.has(symbolName)) return true;
+      
+      // If it's a member access like 'Logger.error' or 'app.start', we check for the leaf name usage.
+      if (symbolName.includes('.')) {
+          const parts = symbolName.split('.');
+          const leafName = parts[parts.length - 1];
+          const parentName = parts[0];
+          
+          if ((parentNode.instantiatedIdentifiers.has(parentName) || 
+               parentNode.importedSymbols.has(`${this.filePath}:${parentName}`)) &&
+              parentNode.instantiatedIdentifiers.has(leafName)) {
+              return true;
+          }
       }
 
-      // Strategy 2: Check relative path based tokens
-      const relativePath = path.relative(path.dirname(parentPath), this.filePath).replace(/\\/g, '/');
-      const relativePathNoExt = relativePath.replace(/\.(js|ts|tsx|jsx)$/, '');
-      
-      const importKey = `${relativePath}:${symbolName}`;
-      const importKeyAlt = `${relativePathNoExt}:${symbolName}`;
-      const starKey = `${relativePath}:*`;
-      const starKeyAlt = `${relativePathNoExt}:*`;
-      
-      if (parentNode.importedSymbols.has(importKey) || parentNode.importedSymbols.has(importKeyAlt) ||
-          parentNode.importedSymbols.has(starKey) || parentNode.importedSymbols.has(starKeyAlt)) {
-        return true;
+      // Dynamic Import Check
+      if (parentNode.dynamicImports.has(this.filePath) || parentNode.explicitImports.has(this.filePath)) {
+         if (parentNode.dynamicImports.has(this.filePath)) return true;
       }
 
-      // NEW: Check for re-exports that might use this symbol (Recursive Barrel Resolution)
+      // Recursive Re-export Resolution
       for (const [exportedName, exportMeta] of parentNode.internalExports.entries()) {
-        const isMatch = (exportMeta.type === 're-export' || exportMeta.type === 're-export-namespace') && 
-                        (exportMeta.originalName === symbolName || exportMeta.originalName === '*') && 
+        const isMatch = (exportMeta.type === 're-export' || exportMeta.type === 're-export-namespace' || exportMeta.type === 're-export-all') && 
+                        (exportMeta.originalName === symbolName || exportMeta.originalName === '*' || exportMeta.type === 're-export-all') && 
                         (exportMeta.source === this.filePath || (exportMeta.source && path.resolve(path.dirname(parentPath), exportMeta.source) === this.filePath));
         
         if (isMatch) {
-          // If this parent re-exports our symbol, check if the re-exported symbol is used
-          if (parentNode.isSymbolReferencedExternally(exportedName, projectGraph, visited)) {
-            return true;
-          }
+          if (parentNode.isSymbolReferencedExternally(exportedName, projectGraph, visited)) return true;
         }
       }
 
+      // Fuzzy / Dynamic usage (Identifiers, Strings, JSX, Decorators)
       if (parentNode.instantiatedIdentifiers.has(symbolName)) return true;
-      
-      for (const accessChain of parentNode.propertyAccessChains) {
-        if (accessChain.endsWith(`.${symbolName}`) || accessChain.includes(`.${symbolName}.`)) {
-          return true;
-        }
-      }
-
       if (parentNode.rawStringReferences.has(symbolName)) return true;
       if (parentNode.jsxComponents.has(symbolName)) return true;
-
-      for (const jsxProp of parentNode.jsxProps) {
-        if (jsxProp.endsWith(`:${symbolName}`)) return true;
-      }
-
       if (parentNode.decorators.has(symbolName)) return true;
+      
+      for (const accessChain of parentNode.propertyAccessChains) {
+        if (accessChain.endsWith(`.${symbolName}`) || accessChain.includes(`.${symbolName}.`)) return true;
+      }
     }
 
     return false;
@@ -114,14 +102,13 @@ export class GraphNode {
 
 export class EngineContext {
   constructor(cwd) {
-    // FIX: Ensure cwd is always defined, fallback to process.cwd()
     this.cwd = cwd || process.cwd();
     this.projectGraph = new Map(); // Path -> GraphNode
     this.usedExternalPackages = new Set();
-    this.unimportedUsedPackages = new Set(); // NEW: For "Unimported but used"
-    this.importedUnusedPackages = new Set(); // NEW: For "Imported but unused"
-    this.unusedBinaries = new Set();         // NEW: For "Unused Binaries"
-    this.manifestDependencies = new Map();   // NEW: Store dependencies from package.json
+    this.unimportedUsedPackages = new Set();
+    this.importedUnusedPackages = new Set();
+    this.unusedBinaries = new Set();
+    this.manifestDependencies = new Map();
     
     this.isWorkspaceEnabled = false;
     this.monorepoPackageRoots = new Set();
@@ -137,62 +124,273 @@ export class EngineContext {
     return this.projectGraph.get(filePath);
   }
 
-  generateSummaryReport() {
+  async generateSummaryReport() {
     const report = {
       orphanedFiles: [],
       deadExports: [],
       unusedDependencies: [],
-      unimportedUsedPackages: [], // NEW
-      importedUnusedPackages: [], // NEW
-      unusedBinaries: []          // NEW
+      unimportedUsedPackages: [],
+      importedUnusedPackages: [],
+      unusedBinaries: []
     };
 
-    // 1. Files & Exports
+    // --- DEEP REACHABILITY ANALYSIS (BFS) ---
+    const reachableFiles = new Set();
+    const queue = [];
+
+    // 1. Initialize BFS with Entry Points
     for (const [filePath, node] of this.projectGraph.entries()) {
-      const isSuppressed = node.localSuppressedRules.has('*') || node.localSuppressedRules.has('unused-file');
+      // FIX: Also check if the file is explicitly mentioned in package.json bin or main
+      if (node.isEntry || node.isLibraryEntry || node.isFrameworkComponent) {
+        reachableFiles.add(filePath);
+        queue.push(filePath);
+      }
+    }
+    
+    // UPGRADE: Ensure package.json main and bin are always entry points
+    // UPGRADE: Comprehensive Entry Point Discovery (Manifests + Tooling)
+    for (const [manifestPath, deps] of this.manifestDependencies.entries()) {
+        try {
+            const data = JSON.parse(fsSync.readFileSync(manifestPath, 'utf8'));
+            const pkgDir = path.dirname(manifestPath);
+            const entries = [];
+            
+            // 1. Standard Manifest Entries
+            if (data.main) entries.push(path.resolve(pkgDir, data.main));
+            if (data.module) entries.push(path.resolve(pkgDir, data.module));
+            if (data.exports) {
+                const unwind = (val) => {
+                    if (typeof val === 'string') entries.push(path.resolve(pkgDir, val));
+                    else if (typeof val === 'object' && val !== null) Object.values(val).forEach(unwind);
+                };
+                unwind(data.exports);
+            }
+            if (data.bin) {
+                if (typeof data.bin === 'string') entries.push(path.resolve(pkgDir, data.bin));
+                else Object.values(data.bin).forEach(b => entries.push(path.resolve(pkgDir, b)));
+            }
+
+            // 2. Protect Documentation & Configs
+            const possibleConfigs = ['vite.config.js', 'vite.config.ts', 'vitest.config.ts', 'tsconfig.json'];
+            possibleConfigs.forEach(c => entries.push(path.resolve(pkgDir, c)));
+
+            entries.forEach(e => {
+                const normalized = e.replace(/\\/g, '/');
+                // Check with common extensions if not found
+                const candidates = [normalized, normalized + '.js', normalized + '.ts', normalized + '.tsx', normalized + '/index.js', normalized + '/index.ts'];
+                for (const cand of candidates) {
+                    if (this.projectGraph.has(cand) && !reachableFiles.has(cand)) {
+                        reachableFiles.add(cand);
+                        queue.push(cand);
+                        this.projectGraph.get(cand).isEntry = true;
+                        break;
+                    }
+                }
+            });
+
+            // --- PLUGIN-BASED ECOSYSTEM DETECTION ---
+            // Plugins will now handle their own erreichbarkeit and dependency validation.
+            if (this.pluginRegistry) {
+                const activePlugins = await this.pluginRegistry.getActivePlugins(pkgDir);
+                for (const plugin of activePlugins) {
+                    if (typeof plugin.onDiscovery === 'function') {
+                        await plugin.onDiscovery({
+                            pkgDir,
+                            data,
+                            reachableFiles,
+                            queue,
+                            projectGraph: this.projectGraph,
+                            context: this
+                        });
+                    }
+                }
+            }
+        } catch (e) {}
+    }
+
+    // 2. BFS Traversal
+    while (queue.length > 0) {
+      const currentPath = queue.shift();
+      const node = this.projectGraph.get(currentPath);
       
-      if (node.incomingEdges.size === 0 && !node.isEntry && !node.isLibraryEntry && !node.isFrameworkComponent && !isSuppressed) {
-        const relPath = path.relative(this.cwd, filePath);
-        report.orphanedFiles.push(relPath);
-        if (this.verbose) {
-          console.log(`[Orphan Auditor] File marked as orphan: ${relPath}`);
-          console.log(`  - Incoming Edges: ${node.incomingEdges.size}`);
-          console.log(`  - isEntry: ${node.isEntry}, isLibraryEntry: ${node.isLibraryEntry}, isFrameworkComponent: ${node.isFrameworkComponent}`);
-          console.log(`  - Suppressed: ${isSuppressed}`);
+      if (!node) continue;
+
+      // Track outgoing edges (static and linked dynamic imports)
+      if (node.outgoingEdges) {
+        for (const outgoingPath of node.outgoingEdges) {
+          const normalizedPath = outgoingPath.replace(/\\/g, '/');
+          if (!reachableFiles.has(normalizedPath)) {
+            reachableFiles.add(normalizedPath);
+            queue.push(normalizedPath);
+          }
         }
       }
 
-      for (const [symbol, meta] of node.internalExports.entries()) {
-        if (symbol === '*' || symbol === 'default' || node.localSuppressedRules.has('unused-export') || node.localSuppressedRules.has(`unused-export:${symbol}`)) {
-          continue;
+      // UPGRADE: Handle non-literal dynamic imports (calculatedDynamicImports)
+      if ((node.calculatedDynamicImports && node.calculatedDynamicImports.length > 0) || (node.dynamicImports && node.dynamicImports.has('__DYNAMIC_PATTERN__'))) {
+        const dir = path.dirname(currentPath);
+        // Conservative: If we have a calculated dynamic import, any file in the same or sub directory could be a target
+        for (const [otherPath, _] of this.projectGraph.entries()) {
+          // Fix: Check if otherPath is in the same directory or a subdirectory of 'dir'
+          if (otherPath !== currentPath && otherPath.startsWith(dir) && !reachableFiles.has(otherPath)) {
+            // Additional check: If it's in a 'plugins' or 'modules' folder, it's very likely a dynamic target
+            const isLikelyDynamicTarget = otherPath.includes('/plugins/') || otherPath.includes('/modules/') || otherPath.includes('/dynamic/');
+            if (isLikelyDynamicTarget) {
+              reachableFiles.add(otherPath);
+              queue.push(otherPath);
+            }
+          }
         }
+      }
 
-        if (!node.isSymbolReferencedExternally(symbol, this.projectGraph)) {
-          const loc = node.symbolSourceLocations.get(symbol) || { line: 0, column: 0 };
-          report.deadExports.push({
-            symbol,
-            file: path.relative(this.cwd, filePath),
-            line: loc.line
-          });
+      // UPGRADE: Handle Worker/Threads usage (new Worker('path'))
+      for (const chain of node.propertyAccessChains) {
+        if (chain.includes('new Worker(') || chain.includes('Worker(')) {
+          // Check if any file path is mentioned in raw strings
+          for (const str of node.rawStringReferences) {
+            if (str.startsWith('.') || str.startsWith('/')) {
+              try {
+                const resolved = path.resolve(path.dirname(currentPath), str);
+                const extensions = ['.js', '.ts', '.mjs', '.cjs'];
+                for (const ext of extensions) {
+                  const p = resolved.endsWith(ext) ? resolved : resolved + ext;
+                  const normalized = p.replace(/\\/g, '/');
+                  if (this.projectGraph.has(normalized) && !reachableFiles.has(normalized)) {
+                    reachableFiles.add(normalized);
+                    queue.push(normalized);
+                  }
+                }
+              } catch (e) {}
+            }
+          }
+        }
+      }
+      
+      // Additional check for unlinked dynamic imports (conservative)
+      if (node.dynamicImports) {
+          for (const dynamicPath of node.dynamicImports) {
+              if (dynamicPath.startsWith('__DYNAMIC_PATTERN__:')) {
+                  const pattern = dynamicPath.split(':')[1];
+                  const dir = path.dirname(currentPath);
+                  for (const [otherPath, _] of this.projectGraph.entries()) {
+                      if (otherPath.startsWith(dir) && !reachableFiles.has(otherPath)) {
+                          reachableFiles.add(otherPath);
+                          queue.push(otherPath);
+                      }
+                  }
+              }
+          }
+      }
+    }
+
+    // --- ANALYSIS PHASE ---
+    if (this.verbose) {
+      console.log(`[Reachability] Total reachable files: ${reachableFiles.size}`);
+      for (const f of reachableFiles) console.log(`  • Reachable: ${path.relative(this.cwd, f)}`);
+    }
+    for (const [filePath, node] of this.projectGraph.entries()) {
+      const isSuppressed = node.localSuppressedRules.has('*') || node.localSuppressedRules.has('unused-file');
+      const isReachable = reachableFiles.has(filePath);
+      
+      // Check for Orphaned Files
+      if (!isReachable && !isSuppressed) {
+        const relPath = path.relative(this.cwd, filePath).replace(/\\/g, '/');
+        report.orphanedFiles.push(relPath);
+      }
+
+      // Check for Dead Exports
+      if (isReachable) {
+        const isPublicAPI = node.isEntry || node.isLibraryEntry;
+        
+        for (const [symbol, meta] of node.internalExports.entries()) {
+          if (symbol === '*' || symbol === 'default' || node.localSuppressedRules.has('unused-export') || node.localSuppressedRules.has(`unused-export:${symbol}`)) {
+            continue;
+          }
+
+          const isSymbolUsed = isPublicAPI || node.isSymbolReferencedExternally(symbol, this.projectGraph);
+
+          if (!isSymbolUsed) {
+            const loc = node.symbolSourceLocations.get(symbol) || { line: 0, column: 0 };
+            report.deadExports.push({
+              symbol,
+              file: path.relative(this.cwd, filePath),
+              line: loc.line
+            });
+          }
+
+          // Member Analysis
+          if (meta.members && meta.members.length > 0 && isSymbolUsed) {
+            for (const member of meta.members) {
+              const fullMemberName = `${symbol}.${member.name}`;
+              
+              if (isPublicAPI && member.isPublic !== false) {
+                  continue; 
+              }
+
+              // UPGRADE: Check for dynamic usage in ANY reachable file, not just direct imports
+              let isMemberUsed = false;
+              for (const [otherPath, otherNode] of this.projectGraph.entries()) {
+                if (reachableFiles.has(otherPath)) {
+                  if (otherNode.instantiatedIdentifiers.has(member.name) || 
+                      otherNode.propertyAccessChains.has(fullMemberName) ||
+                      otherNode.rawStringReferences.has(member.name)) {
+                    isMemberUsed = true;
+                    break;
+                  }
+                }
+              }
+
+              if (!isMemberUsed && !node.isSymbolReferencedExternally(fullMemberName, this.projectGraph)) {
+                const loc = node.symbolSourceLocations.get(fullMemberName) || { line: 0, column: 0 };
+                report.deadExports.push({
+                  symbol: fullMemberName,
+                  file: path.relative(this.cwd, filePath),
+                  line: loc.line
+                });
+              }
+            }
+          }
         }
       }
     }
 
-    // 2. Dependency Analysis (Extended)
-    // Compare manifest dependencies with actually used packages
+    // --- DEPENDENCY ANALYSIS ---
+    const usedByReachableFiles = new Set();
+    reachableFiles.forEach(filePath => {
+      const node = this.projectGraph.get(filePath);
+      if (node) {
+        node.externalPackageUsage.forEach(pkg => usedByReachableFiles.add(pkg));
+        
+        // Conservative check for dynamic imports in reachable files
+        if (node.calculatedDynamicImports) {
+          node.calculatedDynamicImports.forEach(entry => {
+            const expr = typeof entry === 'string' ? entry : (entry.pattern || entry.text || '');
+            // If it looks like a package name (no dots/slashes), assume it's used
+            if (expr && !expr.includes('.') && !expr.includes('/') && !expr.includes('`') && !expr.includes("'") && !expr.includes('"')) {
+               usedByReachableFiles.add(expr);
+            }
+            // Check raw strings for potential package names
+            node.rawStringReferences.forEach(str => {
+               if (!str.startsWith('.') && !str.startsWith('/')) {
+                  const pkg = str.startsWith('@') ? str.split('/').slice(0, 2).join('/') : str.split('/')[0];
+                  usedByReachableFiles.add(pkg);
+               }
+            });
+          });
+        }
+      }
+    });
+
     for (const [manifestPath, deps] of this.manifestDependencies.entries()) {
       const allDeps = [...(deps.dependencies || []), ...(deps.devDependencies || [])];
-      
       const hasTypeScriptFiles = Array.from(this.projectGraph.keys()).some(f => f.endsWith('.ts') || f.endsWith('.tsx'));
       
       for (const dep of allDeps) {
-        // Skip @types packages and known safe packages
         if (dep.startsWith('@types/') || dep === 'entkapp' || (dep === 'typescript' && hasTypeScriptFiles)) {
           continue;
         }
         
-        // Check if the dependency is actually used in the code
-        if (!this.usedExternalPackages.has(dep)) {
+        if (!usedByReachableFiles.has(dep)) {
           report.unusedDependencies.push({
             package: dep,
             type: deps.dependencies.includes(dep) ? 'dependency' : 'devDependency',

@@ -51,7 +51,9 @@ export class WorkerPool {
       // Merge thread structural subsets back into the primary context graph nodes
       analyticalResultsSubsets.flat().forEach(result => {
         if (!result) return;
-        const node = masterEngineInstanceReference.context.getOrCreateNode(result.filePath);
+        // UPGRADE: Normalize filePath before merging to prevent duplicate nodes in the graph
+        const normalizedPath = path.resolve(this.context.cwd, result.filePath).replace(/\\/g, '/');
+        const node = masterEngineInstanceReference.context.getOrCreateNode(normalizedPath);
         
         result.explicitImports.forEach(i => node.explicitImports.add(i));
         result.dynamicImports.forEach(i => node.dynamicImports.add(i));
@@ -85,6 +87,14 @@ export class WorkerPool {
         if (result.isEntry) node.isEntry = true;
         if (result.isLibraryEntry) node.isLibraryEntry = true;
         if (result.isFrameworkComponent) node.isFrameworkComponent = true;
+        if (result.calculatedDynamicImports) {
+          if (!node.calculatedDynamicImports) node.calculatedDynamicImports = [];
+          result.calculatedDynamicImports.forEach(i => node.calculatedDynamicImports.push(i));
+        }
+        if (result.globImports) {
+          if (!node.globImports) node.globImports = [];
+          result.globImports.forEach(i => node.globImports.push(i));
+        }
       });
 
       return true;

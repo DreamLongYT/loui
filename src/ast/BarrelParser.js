@@ -140,6 +140,10 @@ export class BarrelParser {
    * @param {Map} activeProjectGraph - Global active module maps directory registry
    * @param {Set} [protectionStack] - Avoids cyclic validation traps inside self-referencing links
    */
+  /**
+   * UPGRADE 3: Cross-Barrel Symbol Tracking.
+   * Resolves the original source of a symbol through re-exports and aliases.
+   */
   async determineSymbolDeclarationOrigin(contextFilePath, targetSymbolName, activeProjectGraph, protectionStack = new Set()) {
     if (protectionStack.has(contextFilePath)) {
       return { originFile: contextFilePath, originSymbol: targetSymbolName };
@@ -156,7 +160,7 @@ export class BarrelParser {
       return { originFile: contextFilePath, originSymbol: targetSymbolName };
     }
 
-    // Rule B: Evaluate explicit named re-export mappings
+    // Rule B: Evaluate explicit named re-export mappings (export { A as B } from 'module')
     if (spec.forwardedNamedExports.has(targetSymbolName)) {
       const routingRule = spec.forwardedNamedExports.get(targetSymbolName);
       const fullyResolvedPath = this.resolver.resolveModulePath(contextFilePath, routingRule.targetModule);
@@ -167,7 +171,11 @@ export class BarrelParser {
 
     // Rule C: Evaluate structural namespace alias groupings (export * as name from 'module')
     for (const [namespaceAlias, relativeModule] of spec.namespacedWildcardExports.entries()) {
-      // If the targetSymbolName is prefixed with the namespaceAlias, then it's a member of this namespace re-export
+      if (targetSymbolName === namespaceAlias) {
+          // The symbol IS the namespace itself
+          const fullyResolvedPath = this.resolver.resolveModulePath(contextFilePath, relativeModule);
+          return { originFile: fullyResolvedPath, originSymbol: '*' };
+      }
       if (targetSymbolName.startsWith(`${namespaceAlias}.`)) {
         const originalSymbol = targetSymbolName.substring(namespaceAlias.length + 1);
         const fullyResolvedPath = this.resolver.resolveModulePath(contextFilePath, relativeModule);
@@ -178,19 +186,20 @@ export class BarrelParser {
     }
 
     // Rule D: Sweep through anonymous star re-exports vectors (export * from 'module')
-    //
-    // Algorithm:
-    // 1. For each `export * from './child'`, recursively resolve the symbol in the child.
-    // 2. A non-barrel child immediately returns `{ originFile: childPath }` regardless of
-    //    whether it actually declares the symbol.  We therefore must verify that the
-    //    returned origin file actually contains the symbol in its declaredLocalExports
-    //    before accepting the result.
-    // 3. If the child is itself a barrel, the recursive call already performs the full
-    //    chain walk, so we only need to verify the final origin.
     for (const relativePath of spec.wildcardExports) {
       const fullyResolvedPath = this.resolver.resolveModulePath(contextFilePath, relativePath);
       
       if (fullyResolvedPath) {
+        // FIX: Mark the target module as active immediately when export * is found
+        const contextNode = activeProjectGraph.get(contextFilePath);
+        if (contextNode) {
+          contextNode.outgoingEdges.add(fullyResolvedPath);
+          const targetNode = activeProjectGraph.get(fullyResolvedPath);
+          if (targetNode) {
+            targetNode.incomingEdges.add(contextFilePath);
+          }
+        }
+
         const continuousResolutionTrace = await this.determineSymbolDeclarationOrigin(
           fullyResolvedPath,
           targetSymbolName,
@@ -202,14 +211,12 @@ export class BarrelParser {
         if (continuousResolutionTrace.originFile === contextFilePath) continue;
 
         // Verify that the resolved origin actually declares the symbol.
-        // This prevents a non-barrel sibling (e.g. constants.ts) from being
-        // incorrectly returned for a symbol it does not export (e.g. formatData).
         const originSpec = await this.parseBarrelSpecification(continuousResolutionTrace.originFile);
-        if (originSpec.declaredLocalExports.has(continuousResolutionTrace.originSymbol)) {
+        if (originSpec.declaredLocalExports.has(continuousResolutionTrace.originSymbol) || 
+            continuousResolutionTrace.originSymbol === '*') {
           return continuousResolutionTrace;
         }
-        // The origin spec is itself a barrel (isBarrelInstance = true) and the
-        // recursive call already resolved through it – accept the result.
+
         if (originSpec.isBarrelInstance) {
           return continuousResolutionTrace;
         }

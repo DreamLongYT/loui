@@ -11,8 +11,8 @@ Options:
   -V, --version          output the version number
   -c, --cwd <path>       Specify the execution context root directory
   -r, --run              Execute the primary operational pipeline loop
-  --fix                  Enable atomic code updates and self-healing (default: true)
-  --no-fix               Disable direct file manipulation (dry-run mode)
+  --fix                  Enable atomic code updates and self-healing
+  --no-fix               This Method is Deprecated in v4.5.1+ (default: true)
   --tsconfig <path>      Specify path to custom layout configurations
   --test-command <cmd>   Integrated safety test validation script (default: "npm test")
   --workspace            Enable monorepo cluster mesh evaluation
@@ -35,7 +35,7 @@ Defines the root directory where `entkapp` should be executed.
 ### `-r`, `--run`
 Initiates the analysis and refactoring process. This is required for execution.
 
-### `--fix` / `--no-fix`
+### `--fix`
 Controls whether the engine should apply changes to the filesystem.
 
 ### `--init`
@@ -67,7 +67,6 @@ The engine now automatically scans for hardcoded secrets and credentials during 
   "interface": "CLI",
   "useBuiltinPlugins": true,
   "useCustomPlugins": true,
-  "supportKnipPlugins": true,
   "options": {
     "verbose": false,
     "fastMode": true,

@@ -2,11 +2,10 @@ import { loadAdditionalPlugins } from "./ecosystems/PluginLoader.js";
 import path from 'path';
 import fs from 'fs/promises';
 import { pathToFileURL } from 'url';
-import { KnipAdapter } from './KnipAdapter.js';
 import { execa } from 'execa';
 
 /**
- * Advanced Plugin Registry supporting Builtin, Custom, and Knip-style plugins.
+ * Advanced Plugin Registry supporting Builtin and Custom plugins.
  * Enhanced with TypeScript support and folder-based plugin wrapping.
  */
 export class PluginRegistry {
@@ -14,7 +13,6 @@ export class PluginRegistry {
         this.context = context;
         this.plugins = new Map();
         this.config = null;
-        this.knipAdapter = new KnipAdapter(context);
     }
 
     async init(projectRoot) {
@@ -26,7 +24,6 @@ export class PluginRegistry {
             this.config = {
                 useBuiltinPlugins: true,
                 useCustomPlugins: true,
-                supportKnipPlugins: true
             };
         }
 
@@ -38,14 +35,12 @@ export class PluginRegistry {
             await this.loadCustomPlugins(projectRoot);
         }
 
-        if (this.config.supportKnipPlugins) {
-            await this.initKnipAdapter(projectRoot);
-        }
+
     }
 
     async loadBuiltinPlugins() {
         const { NextJsPlugin } = await import('./ecosystems/NextJsPlugin.js');
-        const { NuxtPlugin, RemixPlugin, SvelteKitPlugin, AstroPlugin } = await import('./ecosystems/GenericPlugins.js');
+        const { NuxtPlugin, RemixPlugin, SvelteKitPlugin, AstroPlugin, VitepressPlugin } = await import('./ecosystems/GenericPlugins.js');
         const { TypeScriptPlugin } = await import('./ecosystems/TypeScriptPlugin.js');
         const { ReactPlugin, VuePlugin, SveltePlugin, AngularPlugin } = await import('./ecosystems/ModernFrameworks.js');
         const { GraphQLPlugin, DatabasePlugin } = await import('./ecosystems/BackendServices.js');
@@ -63,6 +58,7 @@ export class PluginRegistry {
             new RemixPlugin(this.context),
             new SvelteKitPlugin(this.context),
             new AstroPlugin(this.context),
+            new VitepressPlugin(this.context),
             new TypeScriptPlugin(this.context),
             new ReactPlugin(this.context),
             new VuePlugin(this.context),
@@ -138,7 +134,7 @@ export class PluginRegistry {
     }
 
     async loadTypeScriptPlugin(pluginPath) {
-        // --- NEW: Better Knip Plugin Support (TypeScript) ---
+        // --- TypeScript Plugin Support ---
         // Transpile TS to JS on the fly using esbuild or similar if available, 
         // or use a simple wrapper that uses ts-node/register if we were in that env.
         // For this sandbox, we'll simulate a "wrap it" approach by using a temporary JS file.
@@ -162,13 +158,6 @@ export class PluginRegistry {
         } catch (e) {
             console.error(`[PluginRegistry] Failed to load TS plugin ${pluginPath}:`, e);
         }
-    }
-
-    async initKnipAdapter(projectRoot) {
-        this.context.knipCompatible = true;
-        await this.knipAdapter.discoverPlugins(projectRoot);
-        const knipPlugins = this.knipAdapter.getPlugins();
-        knipPlugins.forEach(p => this.register(p));
     }
 
     register(plugin) {

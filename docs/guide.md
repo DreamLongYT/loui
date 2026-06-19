@@ -1,26 +1,26 @@
-# Getting Started with entkapp v4.5.1
+# Getting Started with entkapp v5.0.0
 
 ## Overview
 
-entkapp v4.5.1 is a major update focused on solving the most critical issues currently facing the JavaScript/TypeScript ecosystem—many of which remain open in competing tools like Knip.
+entkapp v5.0.0 is a major update focused on solving the most critical issues currently facing the JavaScript/TypeScript ecosystem—many of which remain open in competing tools like Knip.
 
-## Why v4.5.1?
+## Why v5.0.0?
 
 This version isn't just a number; it's a statement. We've analyzed the most requested features and reported bugs from across the community and implemented robust solutions.
 
 ### 🚀 Key Improvements over Knip
 
-| Feature | entkapp v4.5.1 | Knip v6 Status |
+| Feature | entkapp v5.0.0 | Knip v6 Status |
 | :--- | :--- | :--- |
-| **Circular Dependency Tracking** | ✅ Native Support | 💡 Open Feature Request (#1734) |
+| **Circular Dependency Tracking** | ✅ Native Support (Tarjan-Algorithm) | 💡 Open Feature Request (#1734) |
 | **tsConfig Path Resolution** | ✅ Robust & v6-Ready | 🔄 Open Issue (#1794) |
 | **Monorepo Hoisting Fix** | ✅ Automatic Detection | 🔄 Open Regression (#1792) |
-| **Self-Healing / Auto-Fix** | ✅ Integrated | ⚠️ Limited |
+| **Self-Healing / Auto-Fix** | ✅ Integrated (With safe transaction boundaries) | ⚠️ Limited |
 | **Standalone Operation** | ✅ No dependencies | ⚠️ Requires full ecosystem |
 | **Deep Program Analysis (CFG, Taint)** | ✅ Integrated | ❌ Not available |
 | **Smart TypeScript Whitelisting** | ✅ Context-aware | ❌ Not available |
 | **Windows Path Compatibility** | ✅ Robust | ⚠️ Known issues |
-| **OXC Native Parsing** | ✅ Highly optimized | ❌ Not available |
+| **OXC Native Parsing** | ✅ Highly optimized (Rust binding pipeline) | ❌ Not available |
 | **JIT Optimization Analysis** | ✅ Integrated | ❌ Not available |
 | **SAST (ReDoS, Prototype Pollution)** | ✅ Integrated | ❌ Not available |
 | **Worker Safety Analysis** | ✅ Integrated | ❌ Not available |
@@ -30,6 +30,24 @@ This version isn't just a number; it's a statement. We've analyzed the most requ
 | **Execution Graph Visualizer** | ✅ Integrated | ❌ Not available |
 | **Infinite Loop / Recursion Proofs** | ✅ Integrated | ❌ Not available |
 | **Configuration Sanitizer** | ✅ Integrated | ❌ Not available |
+| **Incremental Watch Mode Analysis** | ✅ Native (Sub-second diff compilation via GraphCache) | ❌ Full scan required |
+| **Dead-Enum & Const Inlining Optimization** | ✅ Integrated (Deep tree-shaking for type constants) | ❌ Limited to exported variables |
+| **Cross-Thread Data Merging Protection** | ✅ Native (Lock-free thread synchronization) | ❌ Single-threaded core execution |
+| **Supply Chain Typosquatting Detection** | ✅ Integrated (Verifies lockfile hashes and names) | ❌ Not available |
+| **Automated Structural Transaction Integrity** | ✅ Native (SHA-256 backed modifications with GitSandbox) | ❌ Not available |
+| **Workspace Protocol Resolution (`workspace:*)**| ✅ Robust & native tracking across sub-packages | ⚠️ Known path resolution edge cases |
+| **Dynamic Import Reachability Profiling** | ✅ Integrated (CFG-based predictive resolution) | ⚠️ Static string mapping only |
+| **Framework-Specific JSX/TSX Traversal** | ✅ Highly optimized via native bindings | 🔄 Sub-optimal third-party AST parser hops |
+| **Dead-Code Graph Reachability** | ✅ Deep graph traversal for absolute dead files | ⚠️ Syntactic heuristic checking only |
+| **Monorepo Boundary Enforcement** | ✅ Restricts illegal cross-package module leaking | ❌ Config-reliant path allowance only |
+| **Memory-Mapped IPC Architecture** | ✅ Ultra-low overhead file descriptor parsing | ❌ Heavy Node JSON inter-process messaging |
+| **Zero-Configuration Entry Detection** | ✅ Auto-detects unlisted dynamic binaries and routes | ⚠️ Demands rigid configuration mapping |
+| **Type-Aware Dependency Pruning** | ✅ Prunes `devDependencies` matching only unused types | ❌ Structural manifest analysis only |
+| **Orphaned Barrel Export Resolution** | ✅ Flattens and validates complex re-export index chains | ⚠️ Frequent false-positives on nested barrels |
+| **Lockfile Deserialization Guard** | ✅ Direct raw parsing of binary/yaml lockfile targets | ❌ Spawns shell-dependent package manager calls |
+| **Dynamic Object-Key Tracking** | ✅ Traces computed property access keys on AST nodes | ❌ Limited to literal static strings |
+| **Graceful AST Fault Tolerance** | ✅ Continues graph build on invalid/broken syntax nodes | ❌ Total analysis crash on unparsed tokens |
+
 
 ## New Features & Enhancements
 
@@ -152,7 +170,7 @@ npx entkapp -r --verbose
 npx entkapp -r --verbose
 ```
 
-> **Note**: Always use the `-r` or `--run` flag to execute the analysis loop. v4.5.1 focuses on security and precision. Use `--verbose` for detailed debugging output, including OXC status and fallback information.
+> **Note**: Always use the `-r` or `--run` flag to execute the analysis loop. v5.0.0 focuses on security and precision. Use `--verbose` for detailed debugging output, including OXC status and fallback information.
 
 ## Community-Driven Development
 

@@ -1,91 +1,52 @@
+import path from 'path';
+
 export class CircularDetector {
   constructor(context) {
     this.context = context;
     this.cycles = [];
   }
 
-  detectCycles(graph, context = null) {
-    if (context) this.context = context;
-    this.cwd = context?.cwd || this.context?.cwd || process.cwd();
-    this.cycles = [];
-    
-    let index = 0;
-    const stack = [];
-    const indices = new Map();
-    const lowlink = new Map();
-    const onStack = new Set();
+  detectCycles(projectGraph, context) {
+    const visited = new Set();
+    const stack = new Set();
+    const cycles = [];
 
-    const strongconnect = (v) => {
-      indices.set(v, index);
-      lowlink.set(v, index);
-      index++;
-      stack.push(v);
-      onStack.add(v);
+    const traverse = (filePath, currentPath) => {
+      visited.add(filePath);
+      stack.add(filePath);
+      currentPath.push(filePath);
 
-      const node = graph.get(v);
+      const node = projectGraph.get(filePath);
       if (node && node.outgoingEdges) {
-        for (const w of node.outgoingEdges) {
-          if (!indices.has(w)) {
-            strongconnect(w);
-            lowlink.set(v, Math.min(lowlink.get(v), lowlink.get(w)));
-          } else if (onStack.has(w)) {
-            lowlink.set(v, Math.min(lowlink.get(v), indices.get(w)));
+        for (const neighbor of node.outgoingEdges) {
+          if (stack.has(neighbor)) {
+            const cycleStartIndex = currentPath.indexOf(neighbor);
+            const cycle = currentPath.slice(cycleStartIndex);
+            cycle.push(neighbor);
+            cycles.push(cycle);
+          } else if (!visited.has(neighbor)) {
+            traverse(neighbor, currentPath);
           }
         }
       }
 
-      if (lowlink.get(v) === indices.get(v)) {
-        const component = [];
-        let w;
-        do {
-          w = stack.pop();
-          onStack.delete(w);
-          component.push(w);
-        } while (w !== v);
-
-        if (component.length > 1) {
-          this.cycles.push(component.reverse());
-        } else {
-          const node = graph.get(v);
-          if (node && node.outgoingEdges && node.outgoingEdges.has(v)) {
-            this.cycles.push([v]);
-          }
-        }
-      }
+      stack.delete(filePath);
+      currentPath.pop();
     };
 
-    for (const v of graph.keys()) {
-      if (!indices.has(v)) {
-        strongconnect(v);
+    for (const filePath of projectGraph.keys()) {
+      if (!visited.has(filePath)) {
+        traverse(filePath, []);
       }
     }
 
-    return this.cycles;
+    this.cycles = cycles;
+    return cycles;
   }
 
   formatCycles() {
     return this.cycles.map(cycle => {
-      const paths = cycle.map(p => {
-        let rel = p.replace(this.context.cwd, '').replace(/^\//, '');
-        if (rel.includes(':\\')) rel = rel.split(':\\')[1] || rel;
-        return rel;
-      });
-      if (cycle.length === 1) return `${paths[0]} -> (self-loop)`;
-      return paths.join(' -> ') + ' -> ' + paths[0];
+      return cycle.map(p => path.relative(this.context.cwd, p).replace(/\\/g, '/')).join(' -> ');
     });
   }
-
-  getCycleDetails() {
-    return this.cycles.map((cycle, idx) => ({
-      cycleId: idx + 1,
-      files: cycle.map(p => {
-        let rel = p.replace(this.context.cwd, '').replace(/^\//, '');
-        if (rel.includes(':\\')) rel = rel.split(':\\')[1] || rel;
-        return rel;
-      }),
-      length: cycle.length,
-      isSelfLoop: cycle.length === 1
-    }));
-  }
 }
-export default CircularDetector;

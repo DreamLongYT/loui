@@ -12,7 +12,7 @@
     "sourceMap": true,
     "outDir": "dist",
     "rootDir": "src",
-    "baseUrl": ".",
+    "baseUrl": "./",
     "paths": {
       "@core/*": ["src/core/*"],
       "@utils/*": ["src/utils/*"],
