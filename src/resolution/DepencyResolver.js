@@ -24,12 +24,23 @@ export class DependencyResolver {
 
   resolveModulePath(sourceFile, specifier) {
     const cleanSource = this.normalizePath(sourceFile);
+    
+    // UPGRADE: Use PathMapper for sophisticated resolution (TS-to-JS, aliases, etc.)
+    if (this.pathMapper) {
+      const dir = path.dirname(cleanSource);
+      const target = path.resolve(dir, specifier);
+      const resolved = this.pathMapper.resolvePath(target);
+      if (resolved && existsSync(resolved)) {
+        return this.normalizePath(resolved);
+      }
+    }
+
     if (specifier.startsWith('.')) {
       const dir = path.dirname(cleanSource);
       const target = path.resolve(dir, specifier);
       const normalizedTarget = this.normalizePath(target);
       
-      const extensions = ['', '.js', '.ts', '.tsx', '.jsx', '/index.js', '/index.ts'];
+      const extensions = ['', '.js', '.ts', '.tsx', '.jsx', '/index.js', '/index.ts', '/index.tsx'];
       for (const ext of extensions) {
         const p = normalizedTarget + ext;
         if (existsSync(p)) return this.normalizePath(p);

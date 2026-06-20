@@ -250,6 +250,9 @@ export class OxcAnalyzer {
     } else if (node.source.type === "TemplateLiteral") {
       // Conservative Dynamic Analysis: Treat template literal imports as "potentially anything"
       const quasis = node.source.quasis.map(q => q.value.cooked).join('*');
+      if (!Array.isArray(fileNode.calculatedDynamicImports)) {
+        fileNode.calculatedDynamicImports = [];
+      }
       fileNode.calculatedDynamicImports.push({ 
           kind: 'TemplateLiteral', 
           pattern: quasis,
@@ -437,6 +440,9 @@ export class OxcAnalyzer {
   handleDynamicRequire(node, fileNode) {
     if (node.type === "TemplateLiteral") {
       const quasis = node.quasis.map(q => q.value.cooked).join('*');
+      if (!Array.isArray(fileNode.calculatedDynamicImports)) {
+        fileNode.calculatedDynamicImports = [];
+      }
       fileNode.calculatedDynamicImports.push({
         kind: 'DynamicRequire',
         pattern: quasis,

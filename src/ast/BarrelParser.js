@@ -7,7 +7,7 @@ import fs from 'fs/promises';
  */
 export class BarrelParser {
   constructor(context, resolver) {
-    this.context = context;
+    this.context = context; // Enthält globale Konfigurationen (z.B. context.entrypoints)
     this.resolver = resolver;
     this.cachedSpecifications = new Map();
   }
@@ -23,11 +23,22 @@ export class BarrelParser {
 
     const specification = {
       isBarrelInstance: false,
+      isApplicationEntrypoint: false,     // FIX: Schutzschicht für Einstiegspunkte gegen Fehldetektion
       wildcardExports: new Set(),         // export * from './module';
       namespacedWildcardExports: new Map(), // export * as Utils from './module';
       forwardedNamedExports: new Map(),   // export { token as alias } from './module';
       declaredLocalExports: new Set()      // export const a = 1;
     };
+
+    // FIX: Überprüfe, ob die aktuelle Datei als App-Einstiegspunkt deklariert ist
+    if (this.context && this.context.entrypoints) {
+      const isEntry = this.context.entrypoints.some(entry => 
+        this.resolver.resolveModulePath(filePath, entry) === filePath || entry === filePath
+      );
+      if (isEntry) {
+        specification.isApplicationEntrypoint = true;
+      }
+    }
 
     try {
       const code = await fs.readFile(filePath, 'utf8');
@@ -35,16 +46,20 @@ export class BarrelParser {
 
       this.harvestExportSignatures(sourceFile, specification);
 
-      if (specification.wildcardExports.size > 0 || 
+      // FIX: Eine Datei ist NUR DANN ein rein kosmetisches Barrel, wenn sie Re-Exports besitzt
+      // UND NICHT der geschützte Haupteinstiegspunkt (Entrypoint) der Anwendung ist!
+      if (!specification.isApplicationEntrypoint && (
+          specification.wildcardExports.size > 0 || 
           specification.namespacedWildcardExports.size > 0 || 
-          specification.forwardedNamedExports.size > 0) {
+          specification.forwardedNamedExports.size > 0
+      )) {
         specification.isBarrelInstance = true;
       }
 
       this.cachedSpecifications.set(filePath, specification);
       return specification;
     } catch {
-      return specification; // Error state defaults to safe boundaries layout manifest
+      return specification; // Error-State fällt auf sicheres Standard-Layout zurück
     }
   }
 
@@ -117,14 +132,7 @@ export class BarrelParser {
         break;
       }
 
-      // Track default exports declared directly within the file boundary:
-      // Handles both `export default function foo()` and `export default expression`.
-      // The canonical symbol name stored is 'default' so that forwardedNamedExports
-      // entries whose sourceSymbol is 'default' can resolve correctly via Rule A.
       case ts.SyntaxKind.ExportAssignment: {
-        // ExportAssignment covers `export default <expr>` (isExportEquals === false)
-        // as well as `export = <expr>` (isExportEquals === true, CommonJS style).
-        // We register 'default' for both to ensure the barrel tracer can settle here.
         spec.declaredLocalExports.add('default');
         break;
       }
@@ -139,10 +147,6 @@ export class BarrelParser {
    * @param {string} targetSymbolName - Targeted semantic variable signature name
    * @param {Map} activeProjectGraph - Global active module maps directory registry
    * @param {Set} [protectionStack] - Avoids cyclic validation traps inside self-referencing links
-   */
-  /**
-   * UPGRADE 3: Cross-Barrel Symbol Tracking.
-   * Resolves the original source of a symbol through re-exports and aliases.
    */
   async determineSymbolDeclarationOrigin(contextFilePath, targetSymbolName, activeProjectGraph, protectionStack = new Set()) {
     if (protectionStack.has(contextFilePath)) {
@@ -172,7 +176,6 @@ export class BarrelParser {
     // Rule C: Evaluate structural namespace alias groupings (export * as name from 'module')
     for (const [namespaceAlias, relativeModule] of spec.namespacedWildcardExports.entries()) {
       if (targetSymbolName === namespaceAlias) {
-          // The symbol IS the namespace itself
           const fullyResolvedPath = this.resolver.resolveModulePath(contextFilePath, relativeModule);
           return { originFile: fullyResolvedPath, originSymbol: '*' };
       }
@@ -190,7 +193,7 @@ export class BarrelParser {
       const fullyResolvedPath = this.resolver.resolveModulePath(contextFilePath, relativePath);
       
       if (fullyResolvedPath) {
-        // FIX: Mark the target module as active immediately when export * is found
+        // Verbinde Graph-Kanten direkt während der Wildcard-Traversierung
         const contextNode = activeProjectGraph.get(contextFilePath);
         if (contextNode) {
           contextNode.outgoingEdges.add(fullyResolvedPath);
@@ -204,13 +207,12 @@ export class BarrelParser {
           fullyResolvedPath,
           targetSymbolName,
           activeProjectGraph,
-          new Set(protectionStack) // Use a copy so sibling branches don't block each other
+          new Set(protectionStack) // Kopie verhindert geschwisterliche Branch-Blockaden
         );
 
         if (!continuousResolutionTrace) continue;
         if (continuousResolutionTrace.originFile === contextFilePath) continue;
 
-        // Verify that the resolved origin actually declares the symbol.
         const originSpec = await this.parseBarrelSpecification(continuousResolutionTrace.originFile);
         if (originSpec.declaredLocalExports.has(continuousResolutionTrace.originSymbol) || 
             continuousResolutionTrace.originSymbol === '*') {

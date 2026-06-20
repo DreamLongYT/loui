@@ -1,16 +1,16 @@
-# Getting Started with entkapp v5.0.0
+# Getting Started with entkapp v5.1.0
 
 ## Overview
 
-entkapp v5.0.0 is a major update focused on solving the most critical issues currently facing the JavaScript/TypeScript ecosystem—many of which remain open in competing tools like Knip.
+entkapp v5.1.0 is a major update focused on solving the most critical issues currently facing the JavaScript/TypeScript ecosystem—many of which remain open in competing tools like Knip.
 
-## Why v5.0.0?
+## Why v5.1.0?
 
 This version isn't just a number; it's a statement. We've analyzed the most requested features and reported bugs from across the community and implemented robust solutions.
 
 ### 🚀 Key Improvements over Knip
 
-| Feature | entkapp v5.0.0 | Knip v6 Status |
+| Feature | entkapp| Knip v6 Status |
 | :--- | :--- | :--- |
 | **Circular Dependency Tracking** | ✅ Native Support (Tarjan-Algorithm) | 💡 Open Feature Request (#1734) |
 | **tsConfig Path Resolution** | ✅ Robust & v6-Ready | 🔄 Open Issue (#1794) |
@@ -170,7 +170,7 @@ npx entkapp -r --verbose
 npx entkapp -r --verbose
 ```
 
-> **Note**: Always use the `-r` or `--run` flag to execute the analysis loop. v5.0.0 focuses on security and precision. Use `--verbose` for detailed debugging output, including OXC status and fallback information.
+> **Note**: Always use the `-r` or `--run` flag to execute the analysis loop. v5.1.0 focuses on security and precision. Use `--verbose` for detailed debugging output, including OXC status and fallback information.
 
 ## Community-Driven Development
 

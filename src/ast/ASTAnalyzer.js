@@ -234,7 +234,11 @@ export class ASTAnalyzer {
               }
             }
             break;
+
           case ts.SyntaxKind.CallExpression:
+            // FIX: Führe zuerst die generische Aufrufanalyse aus, die vorher blockiert war
+            this.handleCallExpression(node, fileNode, sourceFile);
+
             if (node.expression.kind === ts.SyntaxKind.ImportKeyword) {
               const arg = node.arguments[0];
               if (arg) {
@@ -244,14 +248,12 @@ export class ASTAnalyzer {
                   fileNode.explicitImports.add(specifier);
                 } else {
                   // UPGRADE: Handle Dynamic Imports with variables/expressions
-                  // We mark the file as having "calculated" dynamic imports to be conservative
                   fileNode.hasCalculatedDynamicImports = true;
                   const exprText = arg.getText(sourceFile);
-                  if (!fileNode.calculatedDynamicImports) fileNode.calculatedDynamicImports = new Set();
+                  if (!fileNode.calculatedDynamicImports || Array.isArray(fileNode.calculatedDynamicImports)) {
+                    fileNode.calculatedDynamicImports = new Set();
+                  }
                   fileNode.calculatedDynamicImports.add(exprText);
-                  
-                  // Conservative approach: If we see `import(path)`, any file in the same or sub directory could be a target.
-                  // This is a simplified version of what knip/entkapp does for plugins.
                   fileNode.dynamicImports.add('__DYNAMIC_PATTERN__');
                 }
               }
@@ -269,12 +271,23 @@ export class ASTAnalyzer {
                 // Dynamic require with template literal
                 fileNode.hasCalculatedDynamicImports = true;
                 const exprText = arg.getText(sourceFile);
-                if (!fileNode.calculatedDynamicImports) fileNode.calculatedDynamicImports = [];
-                fileNode.calculatedDynamicImports.push({ kind: 'DynamicRequire', expression: exprText, start: arg.getStart(sourceFile) });
+                
+                // FIX: Typ-Integrität als Set erzwingen (kein Array [])
+                if (!fileNode.calculatedDynamicImports || Array.isArray(fileNode.calculatedDynamicImports)) {
+                  fileNode.calculatedDynamicImports = new Set();
+                }
+                
+                // FIX: .add() statt .push() verwenden, um Absturz in Pass 2 zu verhindern
+                fileNode.calculatedDynamicImports.add({ 
+                  kind: 'DynamicRequire', 
+                  expression: exprText, 
+                  start: arg.getStart(sourceFile) 
+                });
                 fileNode.dynamicImports.add('__DYNAMIC_PATTERN__');
               }
             }
             break;
+
           case ts.SyntaxKind.PropertyAccessExpression:
             {
               const chain = node.getText(sourceFile);
@@ -284,9 +297,7 @@ export class ASTAnalyzer {
               }
             }
             break;
-          case ts.SyntaxKind.CallExpression:
-            this.handleCallExpression(node, fileNode, sourceFile);
-            break;
+
           case ts.SyntaxKind.JsxElement:
           case ts.SyntaxKind.JsxSelfClosingElement:
             this.handleJsxElement(node, fileNode, sourceFile);
@@ -580,7 +591,9 @@ export class ASTAnalyzer {
           }
         } else {
           // Non-literal dynamic import
-          if (!fileNode.calculatedDynamicImports) fileNode.calculatedDynamicImports = [];
+          if (!Array.isArray(fileNode.calculatedDynamicImports)) {
+            fileNode.calculatedDynamicImports = [];
+          }
           fileNode.calculatedDynamicImports.push({ kind: ts.SyntaxKind[arg.kind], start: arg.getStart(sourceFile) });
           
           // UPGRADE 2: Try to perform Glob-Analysis on Template Strings
@@ -605,11 +618,13 @@ export class ASTAnalyzer {
     if (ts.isTemplateExpression(node)) {
       const head = node.head.text;
       if (head.startsWith('./') || head.startsWith('../')) {
-        // Pattern: `./directory/${variable}`
+        // FIX: Typ-Integrität als Set erzwingen, kein Array!
+        if (!fileNode.globImports || Array.isArray(fileNode.globImports)) {
+          fileNode.globImports = new Set();
+        }
         const dirPath = path.dirname(head);
         if (dirPath && dirPath !== '.') {
-          if (!fileNode.globImports) fileNode.globImports = new Set();
-          fileNode.globImports.add(dirPath);
+          fileNode.globImports.add(dirPath); // Jetzt klappt .add() garantiert!
         }
       }
     }

@@ -563,10 +563,13 @@ export class RefactoringEngine {
           if (node && (node.isLibraryEntry || node.isEntry)) return false;
 
           let isPackageEntryPoint = false;
-          for (const [_, metadata] of this.workspaceGraph.packageManifests.entries()) {
-            if (metadata.entryPoints && metadata.entryPoints.map(p => slashifyLocal(p)).includes(cleanAbsPath)) {
-              isPackageEntryPoint = true;
-              break;
+          const manifests = this.workspaceGraph?.packageManifests;
+          if (manifests) {
+            for (const [_, metadata] of manifests.entries()) {
+              if (metadata.entryPoints && metadata.entryPoints.map(p => slashifyLocal(p)).includes(cleanAbsPath)) {
+                isPackageEntryPoint = true;
+                break;
+              }
             }
           }
           return !isPackageEntryPoint;
@@ -574,7 +577,7 @@ export class RefactoringEngine {
       }
       analysisSummary.unlistedDependencies = this.context.unlistedDependencies || [];
       
-      const advancedResults = this.advancedAnalysis.runAll(this.context.projectGraph, this.workspaceGraph.packageManifests);
+      const advancedResults = this.advancedAnalysis.runAll(this.context.projectGraph, this.workspaceGraph?.packageManifests || new Map());
       const cycles = cyclesResult;
       
       const structuralModificationsStaged = 

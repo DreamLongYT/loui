@@ -2,7 +2,7 @@
 layout: home
 
 hero:
-  name: entkapp v5.0.0
+  name: entkapp v5.1.0
   text: The Ultimate Enterprise Codebase Janitor
   tagline: Solving what Knip cannot. Circular-Aware & Self-Healing.
   image:
@@ -54,7 +54,7 @@ In large-scale enterprise projects, codebases naturally accumulate "cruft" – u
 | Auto-Fix / Refactoring | ✅ | ⚠️ |
 | Self-Healing | ✅ | ❌ |
 | Secrets Detection | ✅ | ❌ |
-| Knip Plugin Support | ❌ (Deprecated since v5.0.0+) | N/A |
+| Knip Plugin Support | ❌ (Deprecated since v5.1.0+) | N/A |
 | Headless API | ✅ | ✅ |
 ---
 

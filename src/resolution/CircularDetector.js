@@ -6,47 +6,86 @@ export class CircularDetector {
     this.cycles = [];
   }
 
-  detectCycles(projectGraph, context) {
-    const visited = new Set();
-    const stack = new Set();
-    const cycles = [];
+  detectCycles(projectGraph) {
+    const stack = [];
+    const onStack = new Set();
+    const indices = new Map();
+    const lowlink = new Map();
+    const sccs = [];
+    let index = 0;
 
-    const traverse = (filePath, currentPath) => {
-      visited.add(filePath);
-      stack.add(filePath);
-      currentPath.push(filePath);
+    const strongConnect = (v) => {
+      indices.set(v, index);
+      lowlink.set(v, index);
+      index++;
+      stack.push(v);
+      onStack.add(v);
 
-      const node = projectGraph.get(filePath);
+      const node = projectGraph.get(v);
       if (node && node.outgoingEdges) {
-        for (const neighbor of node.outgoingEdges) {
-          if (stack.has(neighbor)) {
-            const cycleStartIndex = currentPath.indexOf(neighbor);
-            const cycle = currentPath.slice(cycleStartIndex);
-            cycle.push(neighbor);
-            cycles.push(cycle);
-          } else if (!visited.has(neighbor)) {
-            traverse(neighbor, currentPath);
+        // Ensure outgoingEdges is treated as an array-like structure
+        const edges = Array.isArray(node.outgoingEdges) ? node.outgoingEdges : Array.from(node.outgoingEdges);
+        
+        for (let i = 0; i < edges.length; i++) {
+          const w = edges[i];
+          if (!indices.has(w)) {
+            strongConnect(w);
+            lowlink.set(v, Math.min(lowlink.get(v), lowlink.get(w)));
+          } else if (onStack.has(w)) {
+            lowlink.set(v, Math.min(lowlink.get(v), indices.get(w)));
           }
         }
       }
 
-      stack.delete(filePath);
-      currentPath.pop();
+      if (lowlink.get(v) === indices.get(v)) {
+        const scc = [];
+        let w;
+        do {
+          w = stack.pop();
+          onStack.delete(w);
+          scc.push(w);
+        } while (w !== v);
+
+        if (scc.length > 1) {
+          const cycle = scc.slice().reverse();
+          cycle.push(cycle[0]);
+          sccs.push(cycle);
+        } else if (scc.length === 1) {
+          const singleNode = projectGraph.get(scc[0]);
+          if (singleNode && singleNode.outgoingEdges) {
+            const edges = Array.isArray(singleNode.outgoingEdges) ? singleNode.outgoingEdges : Array.from(singleNode.outgoingEdges);
+            let hasSelfLoop = false;
+            for (let i = 0; i < edges.length; i++) {
+              if (edges[i] === scc[0]) {
+                hasSelfLoop = true;
+                break;
+              }
+            }
+            if (hasSelfLoop) {
+              sccs.push([scc[0], scc[0]]);
+            }
+          }
+        }
+      }
     };
 
-    for (const filePath of projectGraph.keys()) {
-      if (!visited.has(filePath)) {
-        traverse(filePath, []);
+    const keys = Array.from(projectGraph.keys());
+    for (let i = 0; i < keys.length; i++) {
+      if (!indices.has(keys[i])) {
+        strongConnect(keys[i]);
       }
     }
 
-    this.cycles = cycles;
-    return cycles;
+    this.cycles = sccs;
+    return sccs;
   }
 
   formatCycles() {
     return this.cycles.map(cycle => {
-      return cycle.map(p => path.relative(this.context.cwd, p).replace(/\\/g, '/')).join(' -> ');
+      return cycle.map(p => {
+        const relativePath = path.relative(this.context.cwd, p);
+        return relativePath.replace(/\\/g, '/');
+      }).join(' -> ');
     });
   }
 }
