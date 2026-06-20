@@ -1,4 +1,4 @@
-# Plugin SDK Guide (v5.2.0)
+# Plugin SDK Guide (v5.2.1)
 
 ## Overview
 

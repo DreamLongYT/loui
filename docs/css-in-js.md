@@ -2,7 +2,7 @@
 
 ## Overview
 
-entkapp v5.2.0 provides advanced analysis for CSS-in-JS libraries, allowing you to track styled components, emotion styles, and other CSS-in-JS patterns. This helps identify unused styles and ensures consistent styling across your codebase.
+entkapp v5.2.1 provides advanced analysis for CSS-in-JS libraries, allowing you to track styled components, emotion styles, and other CSS-in-JS patterns. This helps identify unused styles and ensures consistent styling across your codebase.
 
 ## Supported Libraries
 

@@ -86,10 +86,16 @@ export class GraphNode {
       }
 
       // Fuzzy / Dynamic usage (Identifiers, Strings, JSX, Decorators)
-      if (parentNode.instantiatedIdentifiers.has(symbolName)) return true;
-      if (parentNode.rawStringReferences.has(symbolName)) return true;
-      if (parentNode.jsxComponents.has(symbolName)) return true;
-      if (parentNode.decorators.has(symbolName)) return true;
+      // UPGRADE: Only check for fuzzy matches if we have a reason to believe it might be used.
+      // We skip global names like 'toLowerCase' unless they are explicitly imported.
+      const isGlobalName = ['toLowerCase', 'toUpperCase', 'toString', 'valueOf', 'hasOwnProperty', 'constructor'].includes(symbolName);
+      
+      if (!isGlobalName) {
+        if (parentNode.instantiatedIdentifiers.has(symbolName)) return true;
+        if (parentNode.rawStringReferences.has(symbolName)) return true;
+        if (parentNode.jsxComponents.has(symbolName)) return true;
+        if (parentNode.decorators.has(symbolName)) return true;
+      }
       
       for (const accessChain of parentNode.propertyAccessChains) {
         if (accessChain.endsWith(`.${symbolName}`) || accessChain.includes(`.${symbolName}.`)) return true;
@@ -390,7 +396,15 @@ export class EngineContext {
           continue;
         }
         
-        if (!usedByReachableFiles.has(dep)) {
+        // UPGRADE: Be more aggressive in detecting unused dependencies.
+        // Check both externalPackageUsage and rawStringReferences.
+        const isUsed = usedByReachableFiles.has(dep) || 
+                       Array.from(reachableFiles).some(f => {
+                         const node = this.projectGraph.get(f);
+                         return node && (node.externalPackageUsage.has(dep) || node.rawStringReferences.has(dep));
+                       });
+
+        if (!isUsed) {
           report.unusedDependencies.push({
             package: dep,
             type: deps.dependencies.includes(dep) ? 'dependency' : 'devDependency',

@@ -2,7 +2,7 @@
 
 ## Overview
 
-To get the most out of entkapp v5.2.0, follow these best practices for project structure, configuration, and workflow integration.
+To get the most out of entkapp v5.2.1, follow these best practices for project structure, configuration, and workflow integration.
 
 ## Project Structure
 

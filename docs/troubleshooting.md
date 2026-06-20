@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide covers common issues you might encounter while using entkapp v5.2.0 and provides solutions to resolve them.
+This guide covers common issues you might encounter while using entkapp v5.2.1 and provides solutions to resolve them.
 
 ## General Issues
 
@@ -12,7 +12,6 @@ This guide covers common issues you might encounter while using entkapp v5.2.0 a
   - Ensure `cache: true` is set in your config.
   - Disable unnecessary plugins in `enabledPlugins`.
   - Check that `node_modules` and build folders are in your `.gitignore`.
-  - Enable parallel processing with the `--parallel` flag.
 
 ### False positives (Code flagged as dead but is used)
 - **Cause**: Dynamic imports, reflection, or framework-specific "magic" usage.
@@ -24,13 +23,12 @@ This guide covers common issues you might encounter while using entkapp v5.2.0 a
 ### False negatives (Dead code not flagged)
 - **Cause**: The code is being referenced in a way the analyzer doesn't recognize (e.g., in a string that happens to match a filename).
 - **Solution**:
-  - Check your `MagicDetector` settings.
   - Ensure all entry points are correctly identified.
 
 ## CLI Errors
 
 ### "Command not found: entkapp"
-- **Solution**: Ensure you have installed the package locally (by `npm install -g entkapp@latest`) or you are using `npx entkapp`.
+- **Solution**: Ensure you have installed the package locally (by `npm install -g entkapp@latest`) or you are using `npx entkapp@latest`.
 
 ### "Critical Operational Pipeline Failure"
 - **Cause**: Usually a permission issue, a corrupt cache, or an unhandled edge case in a plugin.

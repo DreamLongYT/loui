@@ -1,16 +1,16 @@
-# Getting Started with entkapp v5.2.0
+# Getting Started with entkapp v5.2.1
 
 ## Overview
 
-entkapp v5.2.0 is the **Ultimate Hybrid Edition**, merging the rock-solid stability of Version 7 with the high-performance innovations of Version 9. It is specifically engineered to handle massive enterprise codebases where precision and speed are non-negotiable.
+entkapp v5.2.1 is the **Ultimate Hybrid Edition**, merging the rock-solid stability of Version 7 with the high-performance innovations of Version 9. It is specifically engineered to handle massive enterprise codebases where precision and speed are non-negotiable.
 
-## Why v5.2.0 (The Hybrid Edition)?
+## Why v5.2.1 (The Hybrid Edition)?
 
 This version addresses the "unstable feature-creep" of previous iterations by restoring the proven core logic from v7 while keeping the cutting-edge plugin architecture and OXC performance from v9.
 
 ### 🚀 Key Improvements & Comparisons
 
-| Feature | entkapp v5.2.0 | Knip v6 Status |
+| Feature | entkapp v5.2.1 | Knip v6 Status |
 | :--- | :--- | :--- |
 | **Engine Stability** | ✅ v7 Core (Rock Solid) | ⚠️ Iterative |
 | **Circular Dependency Tracking** | ✅ Native Support (Tarjan-Algorithm) | 💡 Open Feature Request (#1734) |

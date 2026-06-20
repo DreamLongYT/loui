@@ -940,7 +940,9 @@ export class RefactoringEngine {
       if (isProtected || isExplicitlyDeclared) {
         finalIsEntry = true;
       } else if (!hasManifestEntries && hasNoIncoming && hasOutgoing && !isLikelyBarrel) {
-        finalIsEntry = true;
+        // UPGRADE: Orphan files with imports are NOT entry points by default.
+        // They must have side effects (detected in AST pass) to be entries.
+        finalIsEntry = node.isEntry; 
       }
 
       node.isEntry = finalIsEntry;
