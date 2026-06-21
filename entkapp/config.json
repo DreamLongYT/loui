@@ -1,19 +1,13 @@
 {
-  // Interface mode: "CLI" for terminal usage, "GUI" for web interface
+  "$schema": "https://unpkg.com/entkapp@5.2.4/schema.json"
   "interface": "CLI",
-
-  // Plugin activation toggles
   "useBuiltinPlugins": true,
   "useCustomPlugins": true,
-
-  // Engine performance and behavior options
   "options": {
     "verbose": false,
     "fastMode": true,
     "selfHealing": true
   },
-
-  // List of core plugins to load (if useBuiltinPlugins is true)
   "enabledPlugins": [
     "nextjs",
     "nuxt",
@@ -22,15 +16,10 @@
     "astro",
     "typescript"
   ],
-
-  // Dependencies to ignore during unused dependency analysis
-  // This prevents false positives for tools that analyze themselves
   "ignoreDependencies": [
     "entkapp",
     "@types/*"
   ],
-
-  // File patterns to exclude from analysis
   "exclude": [
     "node_modules",
     ".git",

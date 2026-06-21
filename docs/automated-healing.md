@@ -1,6 +1,6 @@
 # Automated Self-Healing
 
-entkapp v5.2.3 introduces an advanced **Self-Healing Engine** that goes beyond simple linting. It can automatically fix structural issues in your codebase while ensuring absolute safety through transactional integrity.
+entkapp v5.2.4 introduces an advanced **Self-Healing Engine** that goes beyond simple linting. It can automatically fix structural issues in your codebase while ensuring absolute safety through transactional integrity.
 
 ## 🛡️ Transactional Safety (GitSandbox)
 

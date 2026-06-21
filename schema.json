@@ -1,0 +1,69 @@
+
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "entkapp Configuration Schema",
+  "description": "Configuration schema for entkapp Ultimate - The Enterprise Codebase Janitor",
+  "type": "object",
+  "properties": {
+    "interface": {
+      "description": "The interface mode for entkapp.",
+      "type": "string",
+      "enum": ["CLI", "GUI"],
+      "default": "CLI"
+    },
+    "useBuiltinPlugins": {
+      "description": "Whether to load the built-in ecosystem plugins (Next.js, Vite, etc.).",
+      "type": "boolean",
+      "default": true
+    },
+    "useCustomPlugins": {
+      "description": "Whether to load plugins from the local /entkapp/plugins directory.",
+      "type": "boolean",
+      "default": true
+    },
+    "options": {
+      "type": "object",
+      "properties": {
+        "verbose": {
+          "description": "Enable detailed trace logging for debugging.",
+          "type": "boolean",
+          "default": false
+        },
+        "fastMode": {
+          "description": "Use the OXC (Rust) parser for high-speed analysis.",
+          "type": "boolean",
+          "default": true
+        },
+        "selfHealing": {
+          "description": "Enable automated structural healing and pruning.",
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "enabledPlugins": {
+      "description": "Explicit list of plugins to activate.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["nextjs", "nuxt", "remix", "sveltekit", "astro", "typescript", "vite", "webpack", "react", "vue", "angular"]
+      }
+    },
+    "ignoreDependencies": {
+      "description": "Dependencies that should never be reported as unused.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": ["entkapp", "@types/*"]
+    },
+    "exclude": {
+      "description": "Glob patterns of directories or files to ignore during analysis.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": ["node_modules", ".git", "dist", "build", "coverage"]
+    }
+  }
+}

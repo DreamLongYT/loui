@@ -1,4 +1,4 @@
-# 🕸️ entkapp Ultimate v5.2.0
+# 🕸️ entkapp Ultimate v5.2.4
 
 > **The Ultimate Enterprise Codebase Janitor.** Faster than Knip with OXC integration, type-aware analysis, and automated structural healing. Fully standalone - solving what Knip cannot.
 
@@ -11,7 +11,6 @@
 ## 🚀 Warum entkapp?
 
 *   **⚡ Blazing Fast:** Nutzt den Rust-basierten `oxc-parser` für extrem schnelle AST-Traversierung, kombiniert mit der TypeScript Compiler API für tiefe semantische Analysen.
-*   **🏗️ v7 Stability:** Nutzt die robuste Kern-Logik der Version 7 für zuverlässiges Symbol-Tracking und Erreichbarkeits-Graphen.
 *   **🔌 Massives Plugin-System:** Über 80+ integrierte Plugins (React, Vue, Svelte, Angular, Next.js, Nuxt, SvelteKit, Astro, Vite, Webpack, Turbo, Nx, Tailwind, ESLint, Prettier und viele mehr).
 *   **💀 True Dead Code Detection:** Fortschrittliche graphbasierte Analyse zur Identifizierung von wirklich verwaistem Code.
 *   **🔄 Circular Dependency Detection:** Hochperformante Erkennung von zirkulären Abhängigkeiten mittels Tarjan's Algorithmus.
