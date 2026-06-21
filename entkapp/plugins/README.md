@@ -1,19 +1,59 @@
-# entkapp Plugins
+# 🔌 entkapp Plugins (v5.3.0)
 
-This directory is for your custom plugins. entkapp will automatically load any `.js` or `.mjs` files placed here if `useCustomPlugins` is set to `true` in your `config.json`.
+Dieses Verzeichnis dient für deine benutzerdefinierten Plugins. entkapp lädt automatisch alle `.js` oder `.mjs` Dateien aus diesem Ordner, wenn `useCustomPlugins` in deiner `config.json` auf `true` gesetzt ist.
 
-## Supported Ecosystems (Built-in)
+## 📦 Integrierte Framework- & Tool-Plugins (98 Gesamt)
 
-- **Next.js**: Handles pages, API routes, and App Router conventions.
-- **Nuxt**: Supports auto-imports and server routes.
-- **Remix**: Maps loaders, actions, and root exports.
-- **SvelteKit**: Tracks `+page`, `+layout`, and server-side scripts.
-- **Astro**: Analyzes `.astro` files and static paths.
+entkapp verfügt über eine massive Bibliothek von 98 integrierten Plugins, die automatisch die Architektur deiner Codebase erkennen und analysieren.
 
-## Knip Compatibility
+### 🖼️ Frontend Frameworks & Meta-Frameworks
+- **Next.js** (App Router, Pages Router)
+- **React**, **Preact**, **Solid**, **Qwik**, **Lit**, **Angular**, **Vue**, **Svelte**
+- **Nuxt**, **Remix**, **SvelteKit**, **Astro**, **Vitepress**, **Gatsby**, **RedwoodJS**
 
-entkapp supports Knip-style plugins. You can drop Knip plugins into this folder, and the engine will attempt to wrap them for use within the entkapp ecosystem.
+### 🌐 State Management & Routing
+- **Redux**, **Zustand**, **Jotai**, **Recoil**, **MobX**, **Pinia**, **TanStack Query**
+- **React Router**, **TanStack Router**, **Vue Router**
 
-## Documentation
+### 🛠️ Build Tools & Monorepo
+- **Vite**, **Esbuild**, **Rollup**, **Webpack**, **Parcel**, **TypeScript**, **Babel**, **SWC**
+- **Turbo**, **Nx**, **Lerna**, **Rush**, **Moon**, **Bazel**
 
-For a detailed guide on how to build your own plugins, please refer to the [Plugin Development Guide](../../docs/guide.md#plugin-development).
+### 🎨 Styling & UI Components
+- **Tailwind CSS**, **PostCSS**, **UnoCSS**, **Stylelint**, **RTLCSS**
+- **Ant Design (Antd)**, **Material UI (Mui)**, **Shadcn/UI**, **Radix UI**, **Chakra UI**
+- **Framer Motion**, **GSAP**
+
+### 🧪 Testing & Quality
+- **Jest**, **Vitest**, **Playwright**, **Cypress**, **Storybook**, **MSW**
+- **ESLint**, **Prettier**, **Biome**, **Oxlint**, **Husky**, **Lint-Staged**, **Commitlint**, **Changesets**
+
+### ☁️ Backend, API & Database
+- **Express**, **Fastify**, **NestJS**, **Hono**, **Koa**, **Elysia**, **Hapi**, **Grammy**
+- **GraphQL**, **Apollo**, **TRPC**, **Socket.io**
+- **Prisma**, **Drizzle**, **Mongoose**, **TypeORM**, **Supabase**, **Firebase**, **Clerk**
+
+### 🔧 Infrastructure & Dev Tools
+- **GitHub Actions**, **Docker**, **Terraform**, **EditorConfig**, **Dotenv**
+- **Nvm**, **Volta**, **Pnpm**, **Yarn**, **Bun**
+- **Swiper**, **Quill**, **Envelop**, **Nitro Modules**, **CKEditor Engine**
+
+---
+
+## 🛠️ Eigene Plugins erstellen
+
+Du kannst die Funktionalität von entkapp erweitern, indem du eine Plugin-Klasse erstellst:
+
+```javascript
+export default class MyCustomPlugin {
+  name = 'my-custom-plugin';
+  
+  async onAnalyze(context) {
+    // Deine Logik hier
+  }
+}
+```
+
+## 📜 Dokumentation
+
+Für eine detaillierte Anleitung zur Plugin-Entwicklung besuche bitte den [Plugin Development Guide](https://dreamlongyt.github.io/entkapp/).

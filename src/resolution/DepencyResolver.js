@@ -25,8 +25,23 @@ export class DependencyResolver {
   resolveModulePath(sourceFile, specifier) {
     const cleanSource = this.normalizePath(sourceFile);
     
+    // Check if it's a workspace package reference
+    if (this.context.isWorkspaceEnabled && this.workspaceGraph && this.workspaceGraph.isLocalWorkspaceSpecifier(specifier)) {
+      const match = this.workspaceGraph.getWorkspacePackageMatch(specifier);
+      if (match && match.entryPoints && match.entryPoints.length > 0) {
+        // Return the first entry point for the workspace package
+        return this.normalizePath(match.entryPoints[0]);
+      }
+    }
+
     // UPGRADE: Use PathMapper for sophisticated resolution (TS-to-JS, aliases, etc.)
     if (this.pathMapper) {
+      // Allow pathMapper to resolve aliases directly from specifier
+      const aliasResolved = this.pathMapper.resolvePath(specifier);
+      if (aliasResolved && aliasResolved !== specifier && existsSync(aliasResolved)) {
+         return this.normalizePath(aliasResolved);
+      }
+
       const dir = path.dirname(cleanSource);
       const target = path.resolve(dir, specifier);
       const resolved = this.pathMapper.resolvePath(target);

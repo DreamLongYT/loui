@@ -7,7 +7,7 @@ import { CodeSmellAnalyzer } from './analyzers/CodeSmellAnalyzer.js';
 
 /**
  * ============================================================================
- * 📦 entkapp v4.6.0: Unified Architectural Refactoring Orchestrator
+ * 📦 entkapp v5.3.0: Unified Architectural Refactoring Orchestrator
  * ============================================================================
  * Main execution bridge managing multi-pass compilation cycles, semantic cross-linking,
  * supply-chain validation audits, and automated structural healing rollbacks.
@@ -64,6 +64,11 @@ export class RefactoringEngine {
     this.resolver = new DependencyResolver(this.context, this.pathMapper, this.workspaceGraph);
     this.circularDetector = new CircularDetector(this.context);
     
+    // Lazy import DependencyProfiler
+    import('./resolution/DependencyProfiler.js').then(({ DependencyProfiler }) => {
+      this.dependencyProfiler = new DependencyProfiler(this.context);
+    }).catch(() => {});
+    
     // Stage 3: Wire official AST Syntax parsers and framework processors
     this.analyzer = new ASTAnalyzer(this.context);
     this.oxcAnalyzer = new OxcAnalyzer(this.context);
@@ -115,6 +120,16 @@ export class RefactoringEngine {
       await this.workspaceGraph.initializeWorkspaceMesh();
       if (this.context.isWorkspaceEnabled) {
         console.log(ansis.dim('🌐 Monorepo workspace detected – mapping package mesh layers...'));
+        // Expose workspaceGraph on context for WorkspaceDiagnostic and other components
+        this.context.workspaceGraph = this.workspaceGraph;
+        // Reload PathMapper aliases now that workspace roots are known
+        await this.pathMapper.loadMappings(this.context.tsconfigFilename);
+        if (this.context.verbose) {
+          console.log(`[Workspace] Found ${this.workspaceGraph.packageManifests.size} workspace packages:`);
+          for (const [dir, manifest] of this.workspaceGraph.packageManifests.entries()) {
+            console.log(ansis.dim(`  • ${manifest.name || dir}`));
+          }
+        }
       }
 
       // UPGRADE: Always clear cache for fresh analysis run
@@ -141,6 +156,12 @@ export class RefactoringEngine {
       this.context.metrics.totalFilesScanned = fileList.length;
 
       // Identify meta-framework setups (Next.js, Remix, Nuxt, etc.)
+      if (this.dependencyProfiler) {
+        const usedDeps = await this.dependencyProfiler.traceImplicitInvocations(this.context.cwd);
+        for (const dep of usedDeps) {
+          this.context.usedExternalPackages.add(dep);
+        }
+      }
       const activeFrameworkEcosystems = await this.magicDetector.identifyActiveProjectEcosystems(this.context.cwd);
 
       // Separate explicit configuration packages out for targeted supply chain security checks
@@ -985,6 +1006,20 @@ export class RefactoringEngine {
         peerDependencies: Object.keys(data.peerDependencies || {}),
         optionalDependencies: Object.keys(data.optionalDependencies || {})
       });
+      
+      // Also register workspace manifests if not already done
+      if (this.context.isWorkspaceEnabled && this.workspaceGraph) {
+        for (const [dir, manifest] of this.workspaceGraph.packageManifests.entries()) {
+          if (!this.context.manifestDependencies.has(manifest.manifestPath)) {
+            this.context.manifestDependencies.set(manifest.manifestPath, {
+              dependencies: Object.keys(manifest.dependencies || {}),
+              devDependencies: Object.keys(manifest.devDependencies || {}),
+              peerDependencies: Object.keys(manifest.peerDependencies || {}),
+              optionalDependencies: Object.keys(manifest.optionalDependencies || {})
+            });
+          }
+        }
+      }
     } catch (e) {}
   }
 

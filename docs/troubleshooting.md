@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide covers common issues you might encounter while using entkapp v5.2.4 and provides solutions to resolve them.
+This guide covers common issues you might encounter while using entkapp v5.3.0 and provides solutions to resolve them.
 
 ## General Issues
 
@@ -24,6 +24,7 @@ This guide covers common issues you might encounter while using entkapp v5.2.4 a
 - **Cause**: The code is being referenced in a way the analyzer doesn't recognize (e.g., in a string that happens to match a filename).
 - **Solution**:
   - Ensure all entry points are correctly identified.
+  - Edit / make a config file under /entkapp/config.json
 
 ## CLI Errors
 

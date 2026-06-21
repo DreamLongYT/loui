@@ -1,4 +1,3 @@
-
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "entkapp Configuration Schema",
@@ -46,11 +45,15 @@
       "type": "array",
       "items": {
         "type": "string",
-        "enum": ["nextjs", "nuxt", "remix", "sveltekit", "astro", "typescript", "vite", "webpack", "react", "vue", "angular"]
+        "enum": [
+          "nextjs", "nuxt", "remix", "sveltekit", "astro",
+          "typescript", "vite", "webpack", "react", "vue", "angular",
+          "turbo", "nx", "lerna"
+        ]
       }
     },
     "ignoreDependencies": {
-      "description": "Dependencies that should never be reported as unused.",
+      "description": "Dependencies that should never be reported as unused. Supports glob patterns like '@types/*'.",
       "type": "array",
       "items": {
         "type": "string"
@@ -64,6 +67,87 @@
         "type": "string"
       },
       "default": ["node_modules", ".git", "dist", "build", "coverage"]
+    },
+    "entryPoints": {
+      "description": "Explicit entry point files to protect from orphan detection. Supports glob patterns.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "workspace": {
+      "description": "Monorepo workspace configuration.",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "Force-enable monorepo workspace mode (auto-detected from package.json workspaces or pnpm-workspace.yaml).",
+          "type": "boolean",
+          "default": false
+        },
+        "packages": {
+          "description": "Override workspace package glob patterns (e.g. ['packages/*', 'apps/*']).",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "ignoredPackages": {
+          "description": "Workspace packages to exclude from analysis.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "enforcePackageBoundaries": {
+          "description": "Report errors when a workspace package imports another without declaring it as a dependency.",
+          "type": "boolean",
+          "default": true
+        },
+        "checkVersionMismatches": {
+          "description": "Report warnings when the same dependency has different versions across workspace packages.",
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "tsconfig": {
+      "description": "TypeScript configuration options.",
+      "type": "object",
+      "properties": {
+        "filename": {
+          "description": "Path to the root tsconfig.json file.",
+          "type": "string",
+          "default": "tsconfig.json"
+        },
+        "followProjectReferences": {
+          "description": "Follow TypeScript project references to discover workspace packages.",
+          "type": "boolean",
+          "default": true
+        },
+        "resolveAliases": {
+          "description": "Use tsconfig paths/baseUrl to resolve module aliases.",
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "buildScripts": {
+      "description": "Build script analysis configuration.",
+      "type": "object",
+      "properties": {
+        "scanWorkspaceScripts": {
+          "description": "Also scan package.json scripts in all workspace packages (not just root).",
+          "type": "boolean",
+          "default": true
+        },
+        "scanCIWorkflows": {
+          "description": "Scan .github/workflows YAML files for tool usage.",
+          "type": "boolean",
+          "default": true
+        },
+        "scanConfigFiles": {
+          "description": "Detect tool usage from config files (vite.config.ts, jest.config.js, etc.).",
+          "type": "boolean",
+          "default": true
+        }
+      }
     }
   }
 }

@@ -1,21 +1,21 @@
-# Getting Started with entkapp v5.2.4
+# Getting Started with entkapp v5.3.0
 
 ## Overview
 
-entkapp v5.2.4 is the **Ultimate Hybrid Edition**, merging the rock-solid stability of Version 7 with the high-performance innovations of Version 9. It is specifically engineered to handle massive enterprise codebases where precision and speed are non-negotiable.
+entkapp v5.3.0 is the **Ultimate Hybrid Edition**, merging the rock-solid stability of Version 7 with the high-performance innovations of Version 9. It is specifically engineered to handle massive enterprise codebases where precision and speed are non-negotiable.
 
-## Why v5.2.4 (The Hybrid Edition)?
+## Why v5.3.0 (The Hybrid Edition)?
 
 This version addresses the "unstable feature-creep" of previous iterations by restoring the proven core logic from v7 while keeping the cutting-edge plugin architecture and OXC performance from v9.
 
 ### 🚀 Key Improvements & Comparisons
 
-| Feature | entkapp v5.2.4 | Knip v6 Status |
+| Feature | entkapp v5.3.0 | Knip v6 Status |
 | :--- | :--- | :--- |
 | **Engine Stability** | ✅ v7 Core (Rock Solid) | ⚠️ Iterative |
 | **Circular Dependency Tracking** | ✅ Native Support (Tarjan-Algorithm) | 💡 Open Feature Request (#1734) |
 | **OXC Native Parsing** | ✅ Highly optimized (Rust binding pipeline) | ❌ Not available |
-| **Ecosystem Plugins** | ✅ 80+ (Next.js, Nuxt, Astro, etc.) | ⚠️ Plugin-based |
+| **Ecosystem Plugins** | ✅ 80+ (Next.js, Nuxt, Astro, etc.) | ✅ 100+ (dotenv, Next.js, Vite, Vue, etc.) |
 | **tsConfig Path Resolution** | ✅ Robust & v6-Ready | 🔄 Open Issue (#1794) |
 | **Monorepo Hoisting Fix** | ✅ Automatic Detection | 🔄 Open Regression (#1792) |
 | **Self-Healing / Auto-Fix** | ✅ Integrated (With safe transaction boundaries) | ⚠️ Limited |
@@ -28,8 +28,7 @@ This version addresses the "unstable feature-creep" of previous iterations by re
 | **Dead-Code Graph Reachability** | ✅ Deep graph traversal for absolute dead files | ⚠️ Syntactic heuristic checking only |
 | **Monorepo Boundary Enforcement** | ✅ Restricts illegal cross-package module leaking | ❌ Config-reliant path allowance only |
 | **Type-Aware Dependency Pruning** | ✅ Prunes `devDependencies` matching only unused types | ❌ Structural manifest analysis only |
-| **Orphaned Barrel Export Resolution** | ✅ Flattens and validates complex re-export index chains | ⚠️ Frequent false-positives on nested barrels |
-| **Graceful AST Fault Tolerance** | ✅ Continues graph build on invalid/broken syntax nodes | ❌ Total analysis crash on unparsed tokens |
+| **Graceful AST Fault Tolerance** | ✅ Continues graph build on invalid/broken syntax nodes | ✅ Continues analysis on invalid/broken syntax nodes |
 
 
 ## New Features & Enhancements

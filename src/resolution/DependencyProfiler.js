@@ -146,27 +146,15 @@ export class DependencyProfiler {
     const usedPackages = new Set();
     const usedBinaries = new Set(); // NEW: Track which binaries are actually used
     
-    // 1. Scan package.json scripts
-    try {
-      const pkgJsonPath = path.join(projectRoot, 'package.json');
-      const pkg = JSON.parse(await fs.readFile(pkgJsonPath, 'utf8'));
-      
-      if (pkg.scripts) {
-        for (const script of Object.values(pkg.scripts)) {
-          this.extractPackagesFromScript(script, usedPackages, usedBinaries);
-        }
-      }
+    // 1. Scan package.json scripts (Root)
+    await this._scanDirectoryForConfigs(projectRoot, usedPackages, usedBinaries);
 
-      // Detect @types/* usage
-      if (pkg.dependencies || pkg.devDependencies) {
-        const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
-        for (const depName of Object.keys(allDeps)) {
-          if (depName.startsWith('@types/')) {
-            usedPackages.add(depName);
-          }
-        }
+    // 1.5 Scan Workspace package.json scripts and configs
+    if (this.context.isWorkspaceEnabled && this.context.monorepoPackageRoots) {
+      for (const workspaceRoot of this.context.monorepoPackageRoots) {
+        await this._scanDirectoryForConfigs(workspaceRoot, usedPackages, usedBinaries);
       }
-    } catch (e) {}
+    }
 
     // 2. Scan CI workflows
     try {
@@ -180,9 +168,42 @@ export class DependencyProfiler {
       }
     } catch (e) {}
 
-    // 3. Scan config files
+    // 4. Identify Unused Binaries (Root)
+    await this._identifyUnusedBinaries(projectRoot, usedBinaries);
+    
+    // 4.5 Identify Unused Binaries (Workspaces)
+    if (this.context.isWorkspaceEnabled && this.context.monorepoPackageRoots) {
+      for (const workspaceRoot of this.context.monorepoPackageRoots) {
+        await this._identifyUnusedBinaries(workspaceRoot, usedBinaries);
+      }
+    }
+
+    return usedPackages;
+  }
+
+  async _scanDirectoryForConfigs(dir, usedPackages, usedBinaries) {
     try {
-      const dirEntries = await fs.readdir(projectRoot, { withFileTypes: true });
+      const pkgJsonPath = path.join(dir, 'package.json');
+      const pkg = JSON.parse(await fs.readFile(pkgJsonPath, 'utf8'));
+      
+      if (pkg.scripts) {
+        for (const script of Object.values(pkg.scripts)) {
+          this.extractPackagesFromScript(script, usedPackages, usedBinaries);
+        }
+      }
+
+      if (pkg.dependencies || pkg.devDependencies) {
+        const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
+        for (const depName of Object.keys(allDeps)) {
+          if (depName.startsWith('@types/')) {
+            usedPackages.add(depName);
+          }
+        }
+      }
+    } catch (e) {}
+
+    try {
+      const dirEntries = await fs.readdir(dir, { withFileTypes: true });
       for (const entry of dirEntries) {
         if (!entry.isFile()) continue;
         const fileName = entry.name;
@@ -194,15 +215,14 @@ export class DependencyProfiler {
         }
       }
     } catch (e) {}
+  }
 
-    // 4. Identify Unused Binaries
-    // Scan node_modules/.bin for all available binaries
+  async _identifyUnusedBinaries(dir, usedBinaries) {
     try {
-      const binDir = path.join(projectRoot, 'node_modules', '.bin');
+      const binDir = path.join(dir, 'node_modules', '.bin');
       const availableBinaries = await fs.readdir(binDir).catch(() => []);
       
       for (const bin of availableBinaries) {
-        // Skip hidden files or package manager internal bins
         if (bin.startsWith('.') || ['npm', 'pnpm', 'yarn', 'bun'].includes(bin)) continue;
         
         if (!usedBinaries.has(bin)) {
@@ -210,8 +230,6 @@ export class DependencyProfiler {
         }
       }
     } catch (e) {}
-
-    return usedPackages;
   }
 
   extractPackagesFromScript(script, packageCollector, binaryCollector) {

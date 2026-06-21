@@ -109,7 +109,7 @@ async function bootstrap() {
     try {
       const { ConfigLoader } = await import('../src/resolution/ConfigLoader.js');
       const loader = new ConfigLoader(targetCwd);
-      localConfig = await loader.loadConfig(targetCwd);
+      localConfig = await loader.loadConfig();
     } catch (e) {}
 
     // Merge options with local config

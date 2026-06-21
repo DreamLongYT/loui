@@ -1,5 +1,5 @@
 {
-  "$schema": "https://unpkg.com/entkapp@5.2.4/schema.json"
+  "$schema": "https://unpkg.com/entkapp@latest/schema.json",
   "interface": "CLI",
   "useBuiltinPlugins": true,
   "useCustomPlugins": true,
@@ -26,5 +26,21 @@
     "dist",
     "build",
     "coverage"
-  ]
+  ],
+  "entryPoints": [],
+  "workspace": {
+    "enabled": false,
+    "enforcePackageBoundaries": true,
+    "checkVersionMismatches": true
+  },
+  "tsconfig": {
+    "filename": "tsconfig.json",
+    "followProjectReferences": true,
+    "resolveAliases": true
+  },
+  "buildScripts": {
+    "scanWorkspaceScripts": true,
+    "scanCIWorkflows": true,
+    "scanConfigFiles": true
+  }
 }

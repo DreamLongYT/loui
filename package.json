@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "name": "entkapp",
-  "version": "5.2.4",
-  "description": "The Ultimate Enterprise Codebase Janitor. Faster than Knip with OXC integration, type-aware analysis, and automated structural healing. Fully standalone - solving what Knip cannot.",
+  "version": "5.3.0",
+  "description": "The Ultimate Enterprise Codebase Janitor. High-speed OXC integration, type-aware analysis, and automated structural healing. Fully standalone architectural orchestrator.",
   "type": "module",
   "main": "index.js",
   "bin": {

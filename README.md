@@ -1,75 +1,68 @@
-# 🕸️ entkapp Ultimate v5.2.4
+# 🕸️ entkapp Ultimate v5.3.0
 
-> **The Ultimate Enterprise Codebase Janitor.** Faster than Knip with OXC integration, type-aware analysis, and automated structural healing. Fully standalone - solving what Knip cannot.
+> **The Ultimate Enterprise Codebase Janitor.** High-speed OXC integration, type-aware analysis, and automated structural healing. Fully standalone architectural orchestrator.
 
 ![Version](https://img.shields.io/npm/v/entkapp) ![License](https://img.shields.io/badge/license-Apache--2.0-green.svg) ![Performance](https://img.shields.io/badge/performance-OXC--Inside-blueviolet.svg)
 
 ---
 
-`entkapp` ist eine next-generation Engine zur statischen Code-Analyse, die die Stabilität der bewährten Version 7 mit den Hochleistungs-Features der Version 9 kombiniert. Sie findet ungenutzte Dateien, tote Exports, zirkuläre Abhängigkeiten und Sicherheitsrisiken schneller als jedes andere Tool im Ökosystem.
+`entkapp` is a next-generation static code analysis engine. It identifies unused files, dead exports, circular dependencies, and security risks faster than any other tool in the ecosystem..
 
-## 🚀 Warum entkapp?
+## 🚀 Why entkapp?
 
-*   **⚡ Blazing Fast:** Nutzt den Rust-basierten `oxc-parser` für extrem schnelle AST-Traversierung, kombiniert mit der TypeScript Compiler API für tiefe semantische Analysen.
-*   **🔌 Massives Plugin-System:** Über 80+ integrierte Plugins (React, Vue, Svelte, Angular, Next.js, Nuxt, SvelteKit, Astro, Vite, Webpack, Turbo, Nx, Tailwind, ESLint, Prettier und viele mehr).
-*   **💀 True Dead Code Detection:** Fortschrittliche graphbasierte Analyse zur Identifizierung von wirklich verwaistem Code.
-*   **🔄 Circular Dependency Detection:** Hochperformante Erkennung von zirkulären Abhängigkeiten mittels Tarjan's Algorithmus.
-*   **🔐 Secrets Scanning:** Automatische Erkennung von hartkodierten API-Keys, Tokens und Anmeldedaten.
-*   **🛠️ Automated Structural Healing:** Repariert Abhängigkeitsprobleme und strukturelle Fehler automatisch mit Git-basiertem Rollback-Schutz.
+*   **⚡ Blazing Fast:** Leverages the Rust-based `oxc-parser` for ultra-fast AST traversal, combined with the TypeScript Compiler API for deep semantic analysis.
+*   **🔌 Massive Plugin System:** Over 98 built-in plugins (React, Vue, Svelte, Angular, Next.js, Nuxt, SvelteKit, Astro, Vite, Webpack, Turbo, Nx, Tailwind, ESLint, Prettier, and many more).
+*   **💀 True Dead Code Detection:** Advanced graph-based analysis to identify genuinely orphaned code.
+*   **🔄 Circular Dependency Detection:** High-performance detection of circular dependencies using Tarjan's algorithm.
+*   **🔐 Secrets Scanning:** Automatic detection of hardcoded API keys, tokens, and credentials.
+*   **🛠️ Automated Structural Healing:** Automatically fixes dependency issues and structural errors with Git-based rollback protection.
 
 ## 📦 Installation
 
 ```bash
-# Direkt ausführen ohne Installation (empfohlen)
+# Run directly without installation (recommended)
 npx entkapp
 
-# Oder global installieren
+# Or install it globally
 npm install -g entkapp
 ```
 
-## 🛠️ Nutzung
+## 🛠️ Usage
 
-### Interaktiver Modus (Standard)
-Startet den interaktiven Analyse- und Scaffolding-Workflow:
+### Interactive Mode (Default)
+Starts the interactive analysis:
 ```bash
-npx entkapp
+npx entkapp -r
 ```
 
-### Headless Analyse-Modus
-Ideal für CI/CD-Pipelines. Führt die Analyse ohne Prompts durch und gibt JSON aus:
+### Headless Analysis Mode
+Ideal for CI/CD pipelines. Performs analysis without prompts and outputs JSON:
 ```bash
 npx entkapp --analyze
 ```
 
-### Auto-Fix Modus
-Behebt automatisch Abhängigkeitskonflikte und strukturelle Probleme:
+### Auto-Fix Mode
+Automatically resolves dependency conflicts and structural issues:
 ```bash
 npx entkapp --fix
 ```
 
-### Zusätzliche Optionen
+### Additional Options
 ```bash
-npx entkapp --cwd ./mein-projekt   # Analysiert ein spezifisches Verzeichnis
-npx entkapp --verbose              # Aktiviert detailliertes Logging
-npx entkapp --version              # Zeigt die Versionsnummer
-npx entkapp --help                 # Zeigt das Hilfe-Panel
+npx entkapp --cwd ./my-project  -r    # Analyzes a specific directory
+npx entkapp --verbose -r              # Enables detailed logging
+npx entkapp --version                 # Displays the version number
+npx entkapp --help                    # Displays the help panel
 ```
 
-## 🧠 Fortgeschrittene Architektur
+## 🧠 Advanced Architecture
 
 ### Incremental Caching
-`entkapp` verwendet eine persistente Graph-Status-Schicht (`.entkapp-cache`). Es berechnet SHA-256 Hashes von Dateipuffern, um das AST-Parsing für unveränderte Dateien zu überspringen.
+`entkapp` uses a persistent graph state layer (`.entkapp-cache`). It calculates SHA-256 hashes of file buffers to skip AST parsing for unchanged files.
 
 ### Parallel Analysis
-Bei größeren Codebasen verteilt `entkapp` die Arbeitslast automatisch auf mehrere CPU-Threads mittels Node.js Worker Threads.
+For larger codebases, `entkapp` automatically distributes the workload across multiple CPU threads using Node.js Worker Threads.
 
-### Pluggable Architecture
-Die Engine ist modular aufgebaut:
-- **`EntkappEngine`**: Der zentrale Orchestrator.
-- **`PluginRegistry`**: Verwaltet den Lebenszyklus der Framework-Plugins.
-- **`ASTAnalyzer` / `OxcAnalyzer`**: Multi-pass AST-Walker für tiefgehende Analysen.
-- **`SelfHealer`**: Transaktionales Refactoring mit Git-State-Capture und Rollback.
-
-## 📄 Lizenz
+## 📄 License
 
 Apache-2.0
