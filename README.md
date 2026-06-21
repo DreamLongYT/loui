@@ -1,4 +1,4 @@
-# 🕸️ entkapp Ultimate v5.3.0
+# 🕸️ entkapp Ultimate v5.3.1
 
 > **The Ultimate Enterprise Codebase Janitor.** High-speed OXC integration, type-aware analysis, and automated structural healing. Fully standalone architectural orchestrator.
 

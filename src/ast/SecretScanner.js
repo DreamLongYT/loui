@@ -35,45 +35,89 @@ const SENSITIVE_NAME_PATTERNS = [
   /private[_-]?key/i,
   /client[_-]?secret/i,
   /app[_-]?secret/i,
+  /security[_-]?token/i,
+  /master[_-]?key/i,
+  /root[_-]?password/i,
+
   // Database credentials
   /db[_-]?pass(word)?/i,
   /database[_-]?pass(word)?/i,
   /db[_-]?url/i,
   /database[_-]?url/i,
   /connection[_-]?string/i,
-  // Passwords
+  /postgres(ql)?[_-]?url/i,
+  /mongo(db)?[_-]?url/i,
+  /redis[_-]?url/i,
+
+  // Passwords & Pins
   /^password$/i,
   /^passwd$/i,
   /^pwd$/i,
   /[_-]password$/i,
-  // Tokens
+  /[_-]pass$/i,
+  /pass(phrase|code)/i,
+  /admin[_-]?pass/i,
+  /pin[_-]?number/i,
+
+  // Tokens & Sessions
   /[_-]token$/i,
   /^token$/i,
-  /jwt[_-]?secret/i,
-  /session[_-]?secret/i,
+  /jwt[_-]?(secret|token)/i,
+  /session[_-]?(secret|token|id)/i,
   /cookie[_-]?secret/i,
-  // Cloud provider keys
-  /aws[_-]?(access[_-]?key|secret|session[_-]?token)/i,
-  /gcp[_-]?key/i,
-  /azure[_-]?(key|secret|connection)/i,
-  // Service-specific
-  /stripe[_-]?(key|secret)/i,
-  /twilio[_-]?(auth|token|sid)/i,
-  /sendgrid[_-]?key/i,
-  /github[_-]?token/i,
-  /slack[_-]?(token|webhook)/i,
-  /discord[_-]?(token|secret)/i,
-  /openai[_-]?(key|token)/i,
+  /oauth[_-]?(token|secret|client)/i,
+  /refresh[_-]?token/i,
+  /csrf[_-]?token/i,
+
+  // Cloud Provider Keys (AWS, GCP, Azure)
+  /aws[_-]?(access[_-]?key|secret|session[_-]?token|key[_-]?id)/i,
+  /gcp[_-]?(key|secret|token|sa[_-]?key)/i,
+  /google[_-]?(api[_-]?key|credentials|client[_-]?secret)/i,
+  /azure[_-]?(key|secret|connection|token|tenant[_-]?id)/i,
+
+  // AI & Machine Learning Platforms
+  /openai[_-]?(key|token|secret)/i,
   /anthropic[_-]?key/i,
-  /webhook[_-]?(url|secret)/i,
-  /encryption[_-]?key/i,
+  /cohere[_-]?key/i,
+  /huggingface[_-]?token/i,
+  /replicate[_-]?api/i,
+  /langchain[_-]?api/i,
+  /pinecone[_-]?api/i,
+  /gemini[_-]?key/i,
+
+  // Service-Specific (CI/CD, Dev Tools, Payment, Comms)
+  /stripe[_-]?(key|secret|webhook)/i,
+  /twilio[_-]?(auth|token|sid)/i,
+  /sendgrid[_-]?(key|api)/i,
+  /github[_-]?(token|pat|secret|app[_-]?id)/i,
+  /gitlab[_-]?(token|pat|secret)/i,
+  /slack[_-]?(token|webhook|secret)/i,
+  /discord[_-]?(token|secret|webhook)/i,
+  /pagerduty[_-]?(token|key)/i,
+  /datadog[_-]?(api[_-]?key|app[_-]?key)/i,
+  /sentry[_-]?(dsn|auth[_-]?token)/i,
+  /heroku[_-]?(api[_-]?key|oauth)/i,
+  /atlassian[_-]?(token|secret)/i,
+  /jira[_-]?(token|password)/i,
+  /npm[_-]?auth[_-]?token/i,
+  /jfrog[_-]?(token|password|api)/i,
+  /firebase[_-]?(key|secret|token)/i,
+  /supabase[_-]?(key|secret|service[_-]?role)/i,
+
+  // Webhooks, Crypto, and Infrastructure
+  /webhook[_-]?(url|secret|token)/i,
+  /encryption[_-]?(key|secret|iv)/i,
   /signing[_-]?key/i,
-  /hmac[_-]?key/i,
+  /hmac[_-]?(key|secret)/i,
   /salt$/i,
-  /ssh[_-]?key/i,
-  /private[_-]?key/i,
-  /cert(ificate)?/i,
-  /credential/i,
+  /ssh[_-]?(key|private|public)/i,
+  /cert(ificate)?(s)?/i,
+  /credential(s)?/i,
+  /tls[_-]?(key|cert)/i,
+  /ssl[_-]?(key|cert)/i,
+  /kube(config)?[_-]?(token|secret)/i,
+  /vault[_-]?(token|secret|key)/i,
+  /bitcoind?[_-]?(rpc)?password/i,
 ];
 
 /**
@@ -84,37 +128,55 @@ const SENSITIVE_VALUE_PATTERNS = [
   // AWS Access Key IDs
   { pattern: /AKIA[0-9A-Z]{16}/, label: 'AWS_ACCESS_KEY_ID', severity: SecretSeverity.CRITICAL },
   // AWS Secret Access Keys (40-char base64-ish)
-  { pattern: /[A-Za-z0-9/+=]{40}/, label: 'AWS_SECRET_KEY_CANDIDATE', severity: SecretSeverity.MEDIUM },
-  // Generic high-entropy hex strings (32+ chars)
-  { pattern: /^[0-9a-f]{32,}$/i, label: 'HEX_SECRET', severity: SecretSeverity.HIGH },
-  // Generic high-entropy base64 strings (32+ chars)
-  { pattern: /^[A-Za-z0-9+/]{32,}={0,2}$/, label: 'BASE64_SECRET', severity: SecretSeverity.MEDIUM },
+  { pattern: /(?<![A-Za-z0-9/+=])[A-Za-z0-9/+=]{40}(?![A-Za-z0-9/+=])/, label: 'AWS_SECRET_KEY_CANDIDATE', severity: SecretSeverity.MEDIUM },
+  
+  // Generic high-entropy hex strings (32+ chars) - Added word boundaries to reduce false positives
+  { pattern: /\b[0-9a-f]{32,}\b/i, label: 'HEX_SECRET', severity: SecretSeverity.HIGH },
+  // Generic high-entropy base64 strings (32+ chars) - Replaced rigid anchors with lookarounds
+  { pattern: /(?<![A-Za-z0-9+/])[A-Za-z0-9+/]{32,}={0,2}(?![A-Za-z0-9+/])/, label: 'BASE64_SECRET', severity: SecretSeverity.MEDIUM },
+  
   // JWT tokens
-  { pattern: /^ey[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/, label: 'JWT_TOKEN', severity: SecretSeverity.CRITICAL },
-  // GitHub personal access tokens
-  { pattern: /ghp_[A-Za-z0-9]{36}/, label: 'GITHUB_PAT', severity: SecretSeverity.CRITICAL },
-  { pattern: /github_pat_[A-Za-z0-9_]{82}/, label: 'GITHUB_PAT_FINE', severity: SecretSeverity.CRITICAL },
-  // Stripe keys
-  { pattern: /sk_(live|test)_[A-Za-z0-9]{24,}/, label: 'STRIPE_SECRET_KEY', severity: SecretSeverity.CRITICAL },
-  { pattern: /pk_(live|test)_[A-Za-z0-9]{24,}/, label: 'STRIPE_PUBLIC_KEY', severity: SecretSeverity.HIGH },
-  // Slack tokens
-  { pattern: /xox[baprs]-[A-Za-z0-9-]{10,}/, label: 'SLACK_TOKEN', severity: SecretSeverity.CRITICAL },
-  // Discord tokens
-  { pattern: /[MN][A-Za-z0-9]{23}\.[A-Za-z0-9_-]{6}\.[A-Za-z0-9_-]{27}/, label: 'DISCORD_TOKEN', severity: SecretSeverity.CRITICAL },
-  // Twilio SID
-  { pattern: /AC[a-f0-9]{32}/, label: 'TWILIO_SID', severity: SecretSeverity.HIGH },
-  // SendGrid API key
-  { pattern: /SG\.[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}/, label: 'SENDGRID_KEY', severity: SecretSeverity.CRITICAL },
-  // OpenAI API key
-  { pattern: /sk-[A-Za-z0-9]{32,}/, label: 'OPENAI_KEY', severity: SecretSeverity.CRITICAL },
-  // Generic UUID-like tokens that look like secrets (not just any UUID)
-  { pattern: /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/, label: 'UUID_SECRET_CANDIDATE', severity: SecretSeverity.MEDIUM },
-  // Google API Key
-  { pattern: /AIza[0-9A-Za-z\\-_]{35}/, label: 'GOOGLE_API_KEY', severity: SecretSeverity.CRITICAL },
-  // Firebase Web API Key
-  { pattern: /AIzaSy[0-9A-Za-z\\-_]{33}/, label: 'FIREBASE_API_KEY', severity: SecretSeverity.CRITICAL },
-];
+  { pattern: /\bey[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/, label: 'JWT_TOKEN', severity: SecretSeverity.CRITICAL },
+  
+  // GitHub access tokens (Updated for all token formats: ghp, gho, ghu, ghs, ghr, fine-grained)
+  { pattern: /\bgh[pousr]_[A-Za-z0-9]{36}\b/, label: 'GITHUB_TOKEN_CLASSIC', severity: SecretSeverity.CRITICAL },
+  { pattern: /\bgithub_pat_[A-Za-z0-9_]{82}\b/, label: 'GITHUB_PAT_FINE', severity: SecretSeverity.CRITICAL },
+  { pattern: /\bghs_[A-Za-z0-9\.\-_]{36,}\b/, label: 'GITHUB_APP_STATELESS_TOKEN', severity: SecretSeverity.CRITICAL }, // Supports the modern 2026 ghs_ JWT format
 
+  // Stripe keys
+  { pattern: /\bsk_(live|test)_[A-Za-z0-9]{24,}\b/, label: 'STRIPE_SECRET_KEY', severity: SecretSeverity.CRITICAL },
+  { pattern: /\bpk_(live|test)_[A-Za-z0-9]{24,}\b/, label: 'STRIPE_PUBLIC_KEY', severity: SecretSeverity.HIGH },
+  
+  // Slack tokens & Webhooks
+  { pattern: /\bxox[baprs]-[A-Za-z0-9-]{10,}\b/, label: 'SLACK_TOKEN', severity: SecretSeverity.CRITICAL },
+  { pattern: /https:\/\/hooks\.slack\.com\/services\/T[A-Z0-9_]{8}\/B[A-Z0-9_]{8}\/[A-Za-z0-9_]{24}/, label: 'SLACK_WEBHOOK', severity: SecretSeverity.CRITICAL },
+
+  // Discord tokens & Webhooks
+  { pattern: /\b[MN][A-Za-z0-9]{23}\.[A-Za-z0-9_-]{6}\.[A-Za-z0-9_-]{27}\b/, label: 'DISCORD_TOKEN', severity: SecretSeverity.CRITICAL },
+  { pattern: /https:\/\/discord\.com\/api\/webhooks\/[0-9]{18,20}\/[A-Za-z0-9_-]{68,}/, label: 'DISCORD_WEBHOOK', severity: SecretSeverity.CRITICAL },
+
+  // Twilio SID & Auth Token
+  { pattern: /\bAC[a-f0-9]{32}\b/, label: 'TWILIO_SID', severity: SecretSeverity.HIGH },
+  { pattern: /\b[a-f0-9]{32}\b/, label: 'TWILIO_AUTH_TOKEN_CANDIDATE', severity: SecretSeverity.MEDIUM }, // Twilio tokens are raw 32-char hex strings often found near SIDs
+
+  // SendGrid API key
+  { pattern: /\bSG\.[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}\b/, label: 'SENDGRID_KEY', severity: SecretSeverity.CRITICAL },
+  
+  // OpenAI & Anthropic API keys (Updated for Legacy, Project, and Claude token formats)
+  { pattern: /\bsk-[A-Za-z0-9]{32,}\b/, label: 'OPENAI_KEY_LEGACY', severity: SecretSeverity.CRITICAL },
+  { pattern: /\bsk-proj-[A-Za-z0-9-_]{40,}\b/, label: 'OPENAI_PROJECT_KEY', severity: SecretSeverity.CRITICAL },
+  { pattern: /\bsk-ant-sid01-[A-Za-z0-9-_]{93}\b/, label: 'ANTHROPIC_CLAUDE_KEY', severity: SecretSeverity.CRITICAL },
+
+  // Generic UUID-like tokens
+  { pattern: /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i, label: 'UUID_SECRET_CANDIDATE', severity: SecretSeverity.MEDIUM },
+  
+  // Google & Firebase Key
+  { pattern: /\bAIza[0-9A-Za-z\\-_]{35}\b/, label: 'GOOGLE_API_KEY', severity: SecretSeverity.CRITICAL },
+  { pattern: /\bAIzaSy[0-9A-Za-z\\-_]{33}\b/, label: 'FIREBASE_API_KEY', severity: SecretSeverity.CRITICAL },
+
+  // Private Key Files (Detects multi-line PEM blocks often found inside JSON/Env variables)
+  { pattern: /-----BEGIN [A-Z ]+ PRIVATE KEY-----/, label: 'PRIVATE_KEY_BLOCK', severity: SecretSeverity.CRITICAL },
+];
 /**
  * Minimum length a string value must have to be considered a potential secret.
  * Short strings like "test", "dev", "localhost" are excluded.

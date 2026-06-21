@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide covers common issues you might encounter while using entkapp v5.3.0 and provides solutions to resolve them.
+This guide covers common issues you might encounter while using entkapp v5.3.1 and provides solutions to resolve them.
 
 ## General Issues
 

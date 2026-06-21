@@ -2,9 +2,9 @@
 layout: home
 
 hero:
-  name: entkapp v5.3.0
+  name: entkapp v5.3.1
   text: The Ultimate Hybrid Engine
-  tagline: Rock-Solid v7 Core meets High-Speed v9 Innovations. Solving what Knip cannot.
+  tagline: Solving what Knip cannot.
   image:
     src: /logo.png
     alt: entkapp
