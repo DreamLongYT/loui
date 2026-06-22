@@ -14,7 +14,7 @@ Explore our curated collection of test projects designed to benchmark static ana
 
 ### Monorepo
 | Level | Badge | Playground Link |
-| :--- | :--- | :--- | :--- |
+| :--- | :--- | :--- |
 | **Basic** | <Badge type="tip" text="Beginner" /> | [Launch Basic](https://stackblitz.com/github/DreamLongYT/entkapp/tree/main/playgrounds/monorepo-basic?file=README.md)
 | **Normal** | <Badge type="info" text="Standard" /> | [Launch Normal](https://stackblitz.com/github/DreamLongYT/entkapp/tree/main/playgrounds/monorepo-normal?file=README.md)
 | **Intermediate** | <Badge type="warning" text="Advanced" /> | [Launch Intermediate](https://stackblitz.com/github/DreamLongYT/entkapp/tree/main/playgrounds/monorepo-intermediate?file=README.md)
